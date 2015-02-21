@@ -59,8 +59,22 @@ describe Attache::Upload do
       before { allow(Attache).to receive(:bucket).and_return("bucket") }
 
       it 'should save file remotely' do
-        expect(storage).to receive(:put_object)
+        expect(storage).to receive(:put_object) do |bucket, path, io|
+          expect(bucket).to eq(Attache.bucket)
+          expect(path).not_to start_with('/')
+        end
         subject.call
+      end
+
+      context 'remotedir=nil' do
+        before { allow(Attache).to receive(:remotedir).and_return(nil) }
+
+        it 'should remote file {relpath}/{filename}' do
+          expect(storage).to receive(:put_object) do |bucket, path, io|
+            expect(path).not_to start_with('/')
+          end
+          subject.call
+        end
       end
     end
 

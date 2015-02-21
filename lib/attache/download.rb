@@ -10,7 +10,7 @@ class Attache::Download < Attache::Base
         unless File.exists?(dst_dir)
           src_dir = File.join(Attache.localdir, dirname, basename)
           if Attache.storage && Attache.bucket && (! File.exists?(src_dir))
-            remote_src_dir = File.join(Attache.remotedir, dirname, basename)
+            remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
             remote_object = Attache.storage.get_object(Attache.bucket, remote_src_dir)
             FileUtils.mkdir_p(File.dirname(src_dir))
             open(src_dir, 'wb') {|f| f.write(remote_object.body) }

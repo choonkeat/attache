@@ -88,15 +88,35 @@ describe Attache::Download do
       context 'with storage' do
         before { allow(Attache).to receive(:bucket).and_return("bucket") }
 
-        it 'should retrieve src from storage' do
-          expect(storage).to receive(:get_object) do |bucket, path|
-            expect(bucket).to eq(Attache.bucket)
-            expect(path).to eq(File.join(Attache.remotedir, relpath, filename))
-            double(:remote_object, body: "hello")
-          end
-          expect(middleware).to receive(:transform_local_file).and_return(fullpath)
+        context 'remotedir' do
+          before { allow(Attache).to receive(:remotedir).and_return("top") }
 
-          code, env, body = subject.call
+          it 'should retrieve src from storage' do
+            expect(storage).to receive(:get_object) do |bucket, path|
+              expect(bucket).to eq(Attache.bucket)
+              expect(path).not_to start_with('/')
+              expect(path).to eq(File.join(Attache.remotedir, relpath, filename))
+              double(:remote_object, body: "hello")
+            end
+            expect(middleware).to receive(:transform_local_file).and_return(fullpath)
+
+            code, env, body = subject.call
+          end
+        end
+
+        context 'remotedir=nil' do
+          before { allow(Attache).to receive(:remotedir).and_return(nil) }
+
+          it 'should use {relpath}/{filename}' do
+            expect(storage).to receive(:get_object) do |bucket, path|
+              expect(path).not_to start_with('/')
+              expect(path).to eq(File.join(relpath, filename))
+              double(:remote_object, body: "hello")
+            end
+            expect(middleware).to receive(:transform_local_file).and_return(fullpath)
+
+            code, env, body = subject.call
+          end
         end
       end
 

@@ -18,7 +18,7 @@ class Attache::Upload < Attache::Base
           return [500, headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         end
         if Attache.storage && Attache.bucket
-          Attache.storage.put_object(Attache.bucket, File.join(Attache.remotedir, relpath), File.open(fulldir))
+          Attache.storage.put_object(Attache.bucket, File.join(*Attache.remotedir, relpath), File.open(fulldir))
         end
 
         [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
