@@ -44,7 +44,7 @@ class Attache::Download < Attache::Base
       geometry = CGI.unescape parts.pop
       dirname  = parts.join('/')
       dst_dir  = File.join(Attache.localdir, dirname, sanitize_geometry_path(geometry), basename)
-      yield dirname, geometry, basename, dst_dir
+      yield dirname, Attache.geometry_alias[geometry] || geometry, basename, dst_dir
     end
 
     def sanitize_geometry_path(geometry)

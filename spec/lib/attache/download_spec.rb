@@ -30,6 +30,24 @@ describe Attache::Download do
         expect(dst_path).to eq File.join(localdir, "one/two/three/10x20-#{Digest::SHA1.hexdigest(geometry)}/file extension.jpg")
       end
     end
+
+    context "with GEOMETRY_ALIAS" do
+      before { allow(Attache).to receive(:geometry_alias).and_return("small" => "64x64#", "large" => "128x128>") }
+
+      it "should apply Attache.geometry_alias" do
+        middleware.send(:parse_path_info, "one/two/three/small/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+          expect(geometry).to eq "64x64#"
+        end
+        middleware.send(:parse_path_info, "one/two/three/large/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+          expect(geometry).to eq "128x128>"
+        end
+      end
+      it "should use value as-is when lookup fail" do
+        middleware.send(:parse_path_info, "one/two/three/notfound/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+          expect(geometry).to eq "notfound"
+        end
+      end
+    end
   end
 
   context 'downloading' do
