@@ -23,7 +23,8 @@ describe Attache::Upload do
   end
 
   context "uploading" do
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/upload?file=image.jpg', method: 'PUT') } }
+    let(:params) { Hash(file: 'image.jpg') }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT') } }
 
     it 'should respond with json' do
       code, env, body = subject.call
@@ -84,6 +85,48 @@ describe Attache::Upload do
       it 'should save file remotely' do
         expect(storage).not_to receive(:put_object)
         subject.call
+      end
+    end
+
+    context 'with secret_key' do
+      let(:secret_key) { "topsecret" }
+      let(:expiration) { (Time.now + 10).to_i }
+      before { allow(Attache).to receive(:secret_key).and_return(secret_key) }
+
+      it 'should respond with error' do
+        code, env, body = subject.call
+        expect(code).to eq(401)
+      end
+
+      context 'invalid auth' do
+        let(:uuid) { "hi#{rand}" }
+        let(:digest) { OpenSSL::Digest.new('sha1') }
+        let(:params) { Hash(file: 'image.jpg', expiration: expiration, uuid: uuid, hmac: OpenSSL::HMAC.hexdigest(digest, "wrong#{secret_key}", "#{uuid}#{expiration}")) }
+
+        it 'should respond with error' do
+          code, env, body = subject.call
+          expect(code).to eq(401)
+        end
+      end
+
+      context 'valid auth' do
+        let(:uuid) { "hi#{rand}" }
+        let(:digest) { OpenSSL::Digest.new('sha1') }
+        let(:params) { Hash(file: 'image.jpg', expiration: expiration, uuid: uuid, hmac: OpenSSL::HMAC.hexdigest(digest, secret_key, "#{uuid}#{expiration}")) }
+
+        it 'should respond with success' do
+          code, env, body = subject.call
+          expect(code).to eq(200)
+        end
+
+        context 'expired' do
+          let(:expiration) { (Time.now - 1).to_i }
+
+          it 'should respond with error' do
+            code, env, body = subject.call
+            expect(code).to eq(401)
+          end
+        end
       end
     end
   end

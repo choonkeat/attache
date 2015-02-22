@@ -23,7 +23,7 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 >
 > make sure to `escape` the geometry string.
 > e.g. for a hard crop of `50x50#`, the url should be `50x50%23`
-> 
+>
 > ```
 > <img src="https://example.com/view/pre/fix/50x50%23/image123.jpg" />
 > ```
@@ -40,6 +40,22 @@ set your `FOG_CONFIG` environment variable to a json string, e.g.
 
 ```
 export FOG_CONFIG='{"provider":"AWS", "aws_access_key_id":"REPLACE", "aws_secret_access_key":"REPLACE", "s3_bucket":"demo" }'
+```
+
+## authorization
+
+when `SECRET_KEY` environment variable is provided, `attache` will require a valid `hmac` parameter. uploads will be refused with `HTTP 401` error unless the `hmac` is correct.
+
+clients uploading files need to provide parameters:
+
+* `uuid` is a uuid string
+* `expiration` is a unix timestamp
+* `hmac` is the `HMAC-SHA1` of the `SECRET_KEY` and the concatenated value of `uuid` and `expiration`
+
+e.g.
+
+``` ruby
+hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + expiration)
 ```
 
 ## run

@@ -11,6 +11,18 @@ class Attache::Upload < Attache::Base
 
       case env['REQUEST_METHOD']
       when 'POST', 'PUT'
+        if Attache.secret_key
+          if params['uuid'] &&
+             params['hmac']  &&
+             params['expiration'] &&
+             Time.at(params['expiration'].to_i) > Time.now &&
+             Rack::Utils.secure_compare(params['hmac'], hmac_for("#{params['uuid']}#{params['expiration']}"))
+            # okay
+          else
+            return [401, headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
+          end
+        end
+
         relpath = generate_relpath(params['file'])
         fulldir = File.join(Attache.localdir, relpath).tap {|p| FileUtils.mkdir_p(File.dirname(p)) }
 
@@ -56,6 +68,14 @@ class Attache::Upload < Attache::Base
         'Access-Control-Allow-Methods' => 'POST, PUT',
         'Access-Control-Allow-Headers' => 'Content-Type',
       }.merge(JSON.parse(ENV.fetch('UPLOAD_HEADERS') { '{}' }))
+    end
+
+    def sha1_digest
+      @sha1_digest ||= OpenSSL::Digest.new('sha1')
+    end
+
+    def hmac_for(content)
+      OpenSSL::HMAC.hexdigest(sha1_digest, Attache.secret_key, content)
     end
 
 end
