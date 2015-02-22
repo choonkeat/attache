@@ -1,0 +1,9 @@
+{
+  "name": "attache server",
+  "description": "Image server",
+  "repository": "https://github.com/choonkeat/attache",
+  "keywords": ["ruby", "rack", "image", "resize", "direct", "upload"],
+  "env": {
+    "REMOTE_DIR": "attache"
+  }
+}

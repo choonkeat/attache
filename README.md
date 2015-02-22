@@ -1,5 +1,7 @@
 # attache
 
+[![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
+
 Users will upload files directly into the `attache` server from their browser, bypassing the main app.
 
 > ```
@@ -34,31 +36,31 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 * When a specific size is requested, it will generate the resized file based on the local file and serve it in the http response
 * If the resized file already exist, it will be served directly without further resizing.
 
-## configure
+## Configure
 
-set your `FOG_CONFIG` environment variable to a json string, e.g.
+Set your `FOG_CONFIG` environment variable to a json string, e.g.
 
 ```
 export FOG_CONFIG='{"provider":"AWS", "aws_access_key_id":"REPLACE", "aws_secret_access_key":"REPLACE", "s3_bucket":"demo" }'
 ```
 
-## authorization
+## Authorization
 
-when `SECRET_KEY` environment variable is provided, `attache` will require a valid `hmac` parameter. uploads will be refused with `HTTP 401` error unless the `hmac` is correct.
+When `SECRET_KEY` environment variable is provided, `attache` will require a valid `hmac` parameter. Uploads will be refused with `HTTP 401` error unless the `hmac` is correct.
 
-clients uploading files need to provide parameters:
+Uploads need these additional parameters:
 
 * `uuid` is a uuid string
-* `expiration` is a unix timestamp
+* `expiration` is a unix timestamp of a future time. the significance is, if the timestamp has passed, the upload will be regarded as invalid
 * `hmac` is the `HMAC-SHA1` of the `SECRET_KEY` and the concatenated value of `uuid` and `expiration`
 
-e.g.
+i.e.
 
 ``` ruby
 hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + expiration)
 ```
 
-## run
+## Run
 
 Run it like any Rack app
 
@@ -66,17 +68,17 @@ Run it like any Rack app
 rackup
 ```
 
-## heroku ready
+## Heroku ready
 
 Set your `FOG_CONFIG` config, git push to deploy
 
-## todo
+## Todo
 
 * `attache` server should accept all kinds of files, not just images.
 * `embed_attache(path)` may render `div`, `img`, `iframe` - whatever is suitable for the file
 * cloud upload should be async via `sidekiq`
 * `FOG_CONFIG` should allow for "Virtual Host", where different hostname can use a different cloud storage.
 
-## license
+## License
 
 MIT
