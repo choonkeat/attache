@@ -12,32 +12,32 @@ class Attache::Upload < Attache::Base
       case env['REQUEST_METHOD']
       when 'POST', 'PUT'
         if Attache.secret_key
-          if params['uuid'] &&
-             params['hmac']  &&
-             params['expiration'] &&
-             Time.at(params['expiration'].to_i) > Time.now &&
-             Rack::Utils.secure_compare(params['hmac'], hmac_for("#{params['uuid']}#{params['expiration']}"))
-            # okay
-          else
+          unless hmac_valid?(params)
             return [401, headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
           end
         end
 
         relpath = generate_relpath(params['file'])
-        fulldir = File.join(Attache.localdir, relpath).tap {|p| FileUtils.mkdir_p(File.dirname(p)) }
 
-        unless local_save(fulldir, request.body)
+        bytes_wrote = Attache.cache.write(relpath, request.body)
+        if bytes_wrote == 0
           return [500, headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         end
-        if Attache.storage && Attache.bucket
-          Attache.storage.put_object(Attache.bucket, File.join(*Attache.remotedir, relpath), File.open(fulldir))
-        end
 
-        [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
-          path:         relpath,
-          content_type: content_type_of(fulldir),
-          geometry:     geometry_of(fulldir),
-        }.to_json]]
+        file = Attache.cache.read(relpath)
+        begin
+          fulldir = file.path
+          if Attache.storage && Attache.bucket
+            Attache.storage.put_object(Attache.bucket, File.join(*Attache.remotedir, relpath), file)
+          end
+          [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
+            path:         relpath,
+            content_type: content_type_of(fulldir),
+            geometry:     geometry_of(fulldir),
+          }.to_json]]
+        ensure
+          file.close unless file.closed?
+        end
       when 'OPTIONS'
         [200, headers_with_cors, []]
       else
@@ -58,10 +58,6 @@ class Attache::Upload < Attache::Base
       File.join(*SecureRandom.hex.scan(/\w\w/), basename)
     end
 
-    def local_save(fulldir, io)
-      open(fulldir, 'wb') {|f| f.write(io.read)}
-    end
-
     def headers_with_cors
       {
         'Access-Control-Allow-Origin' => '*',
@@ -78,4 +74,11 @@ class Attache::Upload < Attache::Base
       OpenSSL::HMAC.hexdigest(sha1_digest, Attache.secret_key, content)
     end
 
+    def hmac_valid?(params)
+      params['uuid'] &&
+      params['hmac']  &&
+      params['expiration'] &&
+      Time.at(params['expiration'].to_i) > Time.now &&
+      Rack::Utils.secure_compare(params['hmac'], hmac_for("#{params['uuid']}#{params['expiration']}"))
+    end
 end

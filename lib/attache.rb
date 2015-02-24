@@ -3,6 +3,7 @@ module Attache
     attr_accessor :localdir,
                   :remotedir,
                   :storage,
+                  :cache,
                   :logger,
                   :bucket,
                   :geometry_alias,
@@ -21,4 +22,19 @@ Attache.geometry_alias = JSON.parse(ENV.fetch('GEOMETRY_ALIAS') { '{}' })
 if ENV['FOG_CONFIG'] && (config = JSON.parse(ENV['FOG_CONFIG']))
   Attache.storage = Fog::Storage.new(config.symbolize_keys)
   Attache.bucket  = config['s3_bucket']
+end
+
+if Attache.storage
+  # lru eviction only when there is Attache.storage
+  Attache.cache = DiskStore.new(Attache.localdir, {
+    cache_size: ENV.fetch('CACHE_SIZE_BYTES') {
+      stat = Sys::Filesystem.stat("/")
+      available = stat.block_size * stat.blocks_available
+      (available * 0.8).floor # use 80% free disk by default
+    },
+    reaper_interval:   ENV.fetch('CACHE_EVICTION_INTERVAL_SECONDS') { 60 },
+    eviction_strategy: :LRU,
+  })
+else
+  Attache.cache = DiskStore.new(Attache.localdir)
 end

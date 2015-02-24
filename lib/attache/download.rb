@@ -6,26 +6,46 @@ class Attache::Download < Attache::Base
   def call(env)
     case env['PATH_INFO']
     when %r{\A/view/}
-      parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, dst_dir|
-        unless File.exists?(dst_dir)
-          src_dir = File.join(Attache.localdir, dirname, basename)
-          if Attache.storage && Attache.bucket && (! File.exists?(src_dir))
+      parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
+
+        file = begin
+          Attache.cache.read(relpath)
+        rescue Errno::ENOENT
+        end
+
+        file ||= begin
+          if Attache.storage && Attache.bucket
             remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
-            remote_object = Attache.storage.get_object(Attache.bucket, remote_src_dir)
-            FileUtils.mkdir_p(File.dirname(src_dir))
-            open(src_dir, 'wb') {|f| f.write(remote_object.body) }
+            if remote_object = Attache.storage.get_object(Attache.bucket, remote_src_dir)
+              Attache.cache.write(relpath, StringIO.new(remote_object.body))
+              Attache.cache.read(relpath)
+            end
           end
-          if File.exists?(src_dir)
-            dst_dir = transform_local_file(src_dir, geometry, dst_dir)
-          else
-            return [404, JSON.parse(ENV.fetch('DOWNLOAD_HEADERS') { '{}' }), []]
-          end
+        rescue Excon::Errors
+          Attache.logger.error $@
+          Attache.logger.error $!
+        end
+
+        unless file
+          return [404, JSON.parse(download_headers), []]
+        end
+
+        thumbnail = if geometry == 'original'
+          file
+        else
+          extension = basename.split(/\W+/).last
+          make_thumbnail_for(file, geometry, extension)
         end
 
         headers = {
-          'Content-Type' => Paperclip::ContentTypeDetector.new(dst_dir).detect,
-        }.merge(JSON.parse(ENV.fetch('DOWNLOAD_HEADERS') { '{}' }))
-        [200, headers, Attache::FileResponseBody.new(File.new(dst_dir))]
+          'Content-Type' => content_type_of(thumbnail.path),
+        }.merge(JSON.parse(download_headers))
+
+        [200, headers, rack_response_body_for(thumbnail)].tap do
+          unless file == thumbnail # cleanup
+            File.unlink(thumbnail.path) rescue Errno::ENOENT
+          end
+        end
       end
     else
       @app.call(env)
@@ -43,21 +63,22 @@ class Attache::Download < Attache::Base
       basename = CGI.unescape parts.pop
       geometry = CGI.unescape parts.pop
       dirname  = parts.join('/')
-      dst_dir  = File.join(Attache.localdir, dirname, sanitize_geometry_path(geometry), basename)
-      yield dirname, Attache.geometry_alias[geometry] || geometry, basename, dst_dir
+      relpath  = File.join(dirname, basename)
+      yield dirname, Attache.geometry_alias[geometry] || geometry, basename, relpath
     end
 
-    def sanitize_geometry_path(geometry)
-      geometry.gsub(/\W+/, '') + '-' + Digest::SHA1.hexdigest(geometry)
+    def download_headers
+      ENV.fetch('DOWNLOAD_HEADERS') { '{}' }
     end
 
-    def transform_local_file(src, geometry, dst)
-      extension = src.split(/\W+/).last
-      thumb = Paperclip::Thumbnail.new(File.new(src), geometry: geometry, format: extension)
-      result = thumb.make
-      FileUtils.mkdir_p(File.dirname(dst))
-      File.rename result.path, dst
-      dst
+    def make_thumbnail_for(file, geometry, extension)
+      Paperclip::Thumbnail.new(file, geometry: geometry, format: extension).make
+    rescue Paperclip::Errors::NotIdentifiedByImageMagickError
+      file
+    end
+
+    def rack_response_body_for(file)
+      Attache::FileResponseBody.new(file)
     end
 
 end

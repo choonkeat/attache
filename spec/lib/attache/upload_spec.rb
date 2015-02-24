@@ -6,8 +6,13 @@ describe Attache::Upload do
   let(:middleware) { Attache::Upload.new(app) }
   let(:storage) { double(:storage) }
   let(:localdir) { Dir.mktmpdir }
+  let(:file) { double(:file, closed?: true, path: localdir + "/image.jpg") }
 
   before do
+    allow(middleware).to receive(:content_type_of).and_return('image/jpeg')
+    allow(middleware).to receive(:geometry_of).and_return('100x100')
+    allow(Attache.cache).to receive(:write).and_return(1)
+    allow(Attache.cache).to receive(:read).and_return(file)
     allow(Attache).to receive(:storage).and_return(storage)
     allow(Attache).to receive(:localdir).and_return(localdir)
     allow(storage).to receive(:put_object)
@@ -41,14 +46,12 @@ describe Attache::Upload do
     end
 
     it 'should save file locally' do
+      expect(Attache.cache).to receive(:write).and_return(1)
       code, env, body = subject.call
-      JSON.parse(body.join('')).tap do |json|
-        expect(File).to be_exist(File.join(localdir, json['path']))
-      end
     end
 
     context 'save fail locally' do
-      before { allow(middleware).to receive(:local_save).and_return(false) }
+      before { allow(Attache.cache).to receive(:write).and_return(0) }
 
       it 'should respond with error' do
         code, env, body = subject.call

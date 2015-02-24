@@ -29,12 +29,13 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 > ```
 > <img src="https://example.com/view/pre/fix/50x50%23/image123.jpg" />
 > ```
+> requesting for a geometry of `original` will return the uploaded file. this works well for non-image file uploads.
 
 * Attache keeps the uploaded file in the local harddisk (a temp directory).
 * Attache will also upload the file into cloud storage if `FOG_CONFIG` is set
 * If the local file does not exist for some reason (e.g. cleared cache), it will download from cloud storage and store it locally
 * When a specific size is requested, it will generate the resized file based on the local file and serve it in the http response
-* If the resized file already exist, it will be served directly without further resizing.
+* If cloud storage is defined, local disk cache will store up to a maximum of `CACHE_SIZE_BYTES` bytes. By default `CACHE_SIZE_BYTES` will 80% of available diskspace.
 
 ## Configure
 

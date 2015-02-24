@@ -1,4 +1,6 @@
+require 'sys/filesystem'
 require 'securerandom'
+require 'disk_store'
 require 'fileutils'
 require 'paperclip'
 require 'tmpdir'

@@ -5,11 +5,16 @@ describe Attache::Download do
   let(:middleware) { Attache::Download.new(app) }
   let(:storage) { double(:storage) }
   let(:localdir) { Dir.mktmpdir }
+  let(:file) { double(:file, closed?: true, path: localdir + "/image.gif") }
 
   before do
+    allow(middleware).to receive(:content_type_of).and_return('image/gif')
+    allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| file}
+    allow(middleware).to receive(:rack_response_body_for).and_return([])
+    allow(Attache.cache).to receive(:write).and_return(1)
+    allow(Attache.cache).to receive(:read).and_return(file)
     allow(Attache).to receive(:storage).and_return(storage)
     allow(Attache).to receive(:localdir).and_return(localdir)
-    allow(storage).to receive(:put_object)
   end
 
   after do
@@ -23,11 +28,11 @@ describe Attache::Download do
 
   describe '#parse_path_info' do
     it "should work" do
-      middleware.send(:parse_path_info, "one/two/three/10x20%23/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+      middleware.send(:parse_path_info, "one/two/three/10x20%23/file%20extension.jpg") do |dirname, geometry, basename, relpath|
         expect(dirname).to  eq "one/two/three"
         expect(geometry).to eq "10x20#"
         expect(basename).to eq "file extension.jpg"
-        expect(dst_path).to eq File.join(localdir, "one/two/three/10x20-#{Digest::SHA1.hexdigest(geometry)}/file extension.jpg")
+        expect(relpath).to eq File.join("one/two/three/file extension.jpg")
       end
     end
 
@@ -35,15 +40,15 @@ describe Attache::Download do
       before { allow(Attache).to receive(:geometry_alias).and_return("small" => "64x64#", "large" => "128x128>") }
 
       it "should apply Attache.geometry_alias" do
-        middleware.send(:parse_path_info, "one/two/three/small/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+        middleware.send(:parse_path_info, "one/two/three/small/file%20extension.jpg") do |dirname, geometry, basename, relpath|
           expect(geometry).to eq "64x64#"
         end
-        middleware.send(:parse_path_info, "one/two/three/large/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+        middleware.send(:parse_path_info, "one/two/three/large/file%20extension.jpg") do |dirname, geometry, basename, relpath|
           expect(geometry).to eq "128x128>"
         end
       end
       it "should use value as-is when lookup fail" do
-        middleware.send(:parse_path_info, "one/two/three/notfound/file%20extension.jpg") do |dirname, geometry, basename, dst_path|
+        middleware.send(:parse_path_info, "one/two/three/notfound/file%20extension.jpg") do |dirname, geometry, basename, relpath|
           expect(geometry).to eq "notfound"
         end
       end
@@ -67,17 +72,18 @@ describe Attache::Download do
 
     subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{geometrypath}", {}) } }
 
-    it 'should respond with json' do
+    it 'should send thumbnail' do
+      expect(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| file}
+
       code, env, body = subject.call
 
       expect(env['Content-Type']).to eq('image/gif')
     end
 
-    context 'without cached transformation' do
-      before { expect(File.exists?(cached_dst_path)).to be false }
-
-      it 'should generate on the fly' do
-        expect(middleware).to receive(:transform_local_file).and_return(fullpath)
+    context 'geometry is "original"' do
+      let(:geometry) { 'original' }
+      it 'should send original file' do
+        expect(middleware).not_to receive(:make_thumbnail_for)
 
         code, env, body = subject.call
 
@@ -85,65 +91,42 @@ describe Attache::Download do
       end
     end
 
-    context 'cached transformation' do
+    context 'not in local cache' do
+      let(:read_results) { [nil, remotefile] }
       before do
-        FileUtils.mkdir_p(File.dirname(cached_dst_path))
-        FileUtils.cp('README.md', cached_dst_path)
-      end
-
-      it 'should use cached file' do
-        expect(middleware).not_to receive(:transform_local_file)
-
-        code, env, body = subject.call
-
-        expect(env['Content-Type']).to eq('text/plain')
-      end
-    end
-
-    context 'without local src' do
-      before { File.unlink(fullpath) }
-
-      context 'with storage' do
-        before { allow(Attache).to receive(:bucket).and_return("bucket") }
-
-        context 'remotedir' do
-          before { allow(Attache).to receive(:remotedir).and_return("top") }
-
-          it 'should retrieve src from storage' do
-            expect(storage).to receive(:get_object) do |bucket, path|
-              expect(bucket).to eq(Attache.bucket)
-              expect(path).not_to start_with('/')
-              expect(path).to eq(File.join(Attache.remotedir, relpath, filename))
-              double(:remote_object, body: "hello")
-            end
-            expect(middleware).to receive(:transform_local_file).and_return(fullpath)
-
-            code, env, body = subject.call
-          end
-        end
-
-        context 'remotedir=nil' do
-          before { allow(Attache).to receive(:remotedir).and_return(nil) }
-
-          it 'should use {relpath}/{filename}' do
-            expect(storage).to receive(:get_object) do |bucket, path|
-              expect(path).not_to start_with('/')
-              expect(path).to eq(File.join(relpath, filename))
-              double(:remote_object, body: "hello")
-            end
-            expect(middleware).to receive(:transform_local_file).and_return(fullpath)
-
-            code, env, body = subject.call
+        allow(Attache).to receive(:bucket).and_return("bucket")
+        allow(Attache.cache).to receive(:read) do
+          read_results.shift.tap do |file|
+            raise Errno::ENOENT.new unless file
           end
         end
       end
 
-      context 'without storage' do
-        it 'should 404' do
-          allow(Attache).to receive(:storage).and_return(nil)
+      context 'available remotely' do
+        let!(:remotefile) { file }
+
+        it 'should get_object from storage' do
+          expect(storage).to receive(:get_object) do |bucket, path|
+            expect(bucket).to eq(Attache.bucket)
+            expect(path).not_to start_with('/')
+            expect(path).to eq(File.join(*Attache.remotedir, relpath, filename))
+            double(:remote_object, body: "hello")
+          end
+          expect(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| file}
 
           code, env, body = subject.call
+          expect(code).to eq(200)
+        end
+      end
 
+      context 'not available remotely' do
+        let!(:remotefile) { nil }
+
+        it 'should get_object from storage' do
+          expect(storage).to receive(:get_object).and_return(nil)
+          expect(middleware).not_to receive(:make_thumbnail_for)
+
+          code, env, body = subject.call
           expect(code).to eq(404)
         end
       end
