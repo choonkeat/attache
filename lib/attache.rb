@@ -12,7 +12,7 @@ module Attache
 end
 
 Attache.logger     = Logger.new(STDOUT)
-Attache.localdir   = File.expand_path(ENV.fetch('LOCAL_DIR') { Dir.mktmpdir })
+Attache.localdir   = File.expand_path(ENV.fetch('LOCAL_DIR') { Dir.tmpdir })
 Attache.remotedir  = ENV['REMOTE_DIR'] # nil means no fixed top level remote directory, and that's fine.
 Attache.secret_key = ENV['SECRET_KEY'] # nil means no auth check; anyone can upload a file
 
