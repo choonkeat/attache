@@ -9,7 +9,7 @@ class Attache::Download < Attache::Base
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
 
         file = begin
-          Attache.cache.read(relpath).tap(&:close)
+          Attache.cache.read(relpath)
         rescue Errno::ENOENT
         end
 
@@ -18,7 +18,7 @@ class Attache::Download < Attache::Base
             remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
             if remote_object = Attache.storage.get_object(Attache.bucket, remote_src_dir)
               Attache.cache.write(relpath, StringIO.new(remote_object.body))
-              Attache.cache.read(relpath).tap(&:close)
+              Attache.cache.read(relpath)
             end
           end
         rescue Excon::Errors
@@ -34,7 +34,7 @@ class Attache::Download < Attache::Base
           file
         else
           extension = basename.split(/\W+/).last
-          make_thumbnail_for(file, geometry, extension)
+          make_thumbnail_for(file.tap(&:close), geometry, extension)
         end
 
         headers = {

@@ -5,14 +5,15 @@ describe Attache::Download do
   let(:middleware) { Attache::Download.new(app) }
   let(:storage) { double(:storage) }
   let(:localdir) { Dir.mktmpdir }
-  let(:file) { double(:file, closed?: true, path: localdir + "/image.gif") }
+  let(:file) { Tempfile.new("file") }
+  let(:thumbnail) { Tempfile.new("thumbnail") }
 
   before do
     allow(middleware).to receive(:content_type_of).and_return('image/gif')
-    allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| file}
+    allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| thumbnail.tap(&:open)}
     allow(middleware).to receive(:rack_response_body_for).and_return([])
     allow(Attache.cache).to receive(:write).and_return(1)
-    allow(Attache.cache).to receive(:read).and_return(file)
+    allow(Attache.cache).to receive(:read).and_return(file.tap(&:open))
     allow(Attache).to receive(:storage).and_return(storage)
     allow(Attache).to receive(:localdir).and_return(localdir)
   end
@@ -73,21 +74,58 @@ describe Attache::Download do
     subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{geometrypath}", {}) } }
 
     it 'should send thumbnail' do
-      expect(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| file}
+      expect(middleware).to receive(:make_thumbnail_for)
 
       code, env, body = subject.call
 
-      expect(env['Content-Type']).to eq('image/gif')
+      expect(env['X-Exception']).to eq(nil)
+    end
+
+    it 'should keep file.open for response' do
+      expect(middleware).to receive(:rack_response_body_for) do |file|
+        expect(file).not_to be_closed
+      end
+
+      code, env, body = subject.call
+
+      expect(env['X-Exception']).to eq(nil)
+    end
+
+    it 'should close original file' do
+      expect(file).to receive(:close)
+
+      code, env, body = subject.call
+
+      expect(env['X-Exception']).to eq(nil)
     end
 
     context 'geometry is "original"' do
       let(:geometry) { 'original' }
+
       it 'should send original file' do
         expect(middleware).not_to receive(:make_thumbnail_for)
 
         code, env, body = subject.call
 
-        expect(env['Content-Type']).to eq('image/gif')
+        expect(env['X-Exception']).to eq(nil)
+      end
+
+      it 'should keep file.open for response' do
+        expect(middleware).to receive(:rack_response_body_for) do |file|
+          expect(file).not_to be_closed
+        end
+
+        code, env, body = subject.call
+
+        expect(env['X-Exception']).to eq(nil)
+      end
+
+      it 'should not close original file' do
+        expect(file).not_to receive(:close)
+
+        code, env, body = subject.call
+
+        expect(env['X-Exception']).to eq(nil)
       end
     end
 
@@ -112,7 +150,7 @@ describe Attache::Download do
             expect(path).to eq(File.join(*Attache.remotedir, relpath, filename))
             double(:remote_object, body: "hello")
           end
-          expect(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| file}
+          expect(middleware).to receive(:make_thumbnail_for)
 
           code, env, body = subject.call
           expect(code).to eq(200)
