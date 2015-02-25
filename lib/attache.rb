@@ -38,3 +38,10 @@ if Attache.storage
 else
   Attache.cache = DiskStore.new(Attache.localdir)
 end
+
+# summary
+Attache.logger.info({
+  storage: Attache.storage.class.name,
+  secret_key: !!Attache.secret_key,
+  cache: Attache.cache,
+})
