@@ -9,7 +9,7 @@ class Attache::Download < Attache::Base
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
 
         file = begin
-          Attache.cache.read(relpath)
+          Attache.cache.read(relpath).tap(&:close)
         rescue Errno::ENOENT
         end
 
@@ -18,7 +18,7 @@ class Attache::Download < Attache::Base
             remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
             if remote_object = Attache.storage.get_object(Attache.bucket, remote_src_dir)
               Attache.cache.write(relpath, StringIO.new(remote_object.body))
-              Attache.cache.read(relpath)
+              Attache.cache.read(relpath).tap(&:close)
             end
           end
         rescue Excon::Errors
@@ -72,7 +72,10 @@ class Attache::Download < Attache::Base
     end
 
     def make_thumbnail_for(file, geometry, extension)
-      Paperclip::Thumbnail.new(file, geometry: geometry, format: extension).make
+      thumbnail = Paperclip::Thumbnail.new(file, geometry: geometry, format: extension)
+      # weird output filenames can confuse imagemagick; sanitizing output basename
+      thumbnail.instance_variable_set('@basename', thumbnail.instance_variable_get('@basename').gsub(/[^\w\.]/, '_'))
+      thumbnail.make
     rescue Paperclip::Errors::NotIdentifiedByImageMagickError
       file
     end
