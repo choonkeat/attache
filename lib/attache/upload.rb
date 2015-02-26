@@ -10,7 +10,7 @@ class Attache::Upload < Attache::Base
       params   = request.params
 
       case env['REQUEST_METHOD']
-      when 'POST', 'PUT'
+      when 'POST', 'PUT', 'PATCH'
         if Attache.secret_key
           unless hmac_valid?(params)
             return [401, headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
@@ -28,7 +28,10 @@ class Attache::Upload < Attache::Base
         begin
           fulldir = file.path
           if Attache.storage && Attache.bucket
-            Attache.storage.put_object(Attache.bucket, File.join(*Attache.remotedir, relpath), file)
+            storage_files.create(Attache.file_options.merge({
+              key: File.join(*Attache.remotedir, relpath),
+              body: file,
+            }))
           end
           [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
             path:         relpath,

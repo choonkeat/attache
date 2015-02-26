@@ -42,14 +42,23 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 Set your `FOG_CONFIG` environment variable to a json string, e.g.
 
 ```
-export FOG_CONFIG='{"provider":"AWS", "aws_access_key_id":"REPLACE", "aws_secret_access_key":"REPLACE", "s3_bucket":"demo" }'
+export FOG_CONFIG='{"provider":"AWS", "aws_access_key_id":"REPLACE", "aws_secret_access_key":"REPLACE", "bucket":"demo" }'
 ```
+
+Refer to [fog documentation](http://fog.io/storage/) for configuration details of `Fog::Storage.new`
+
+Non-standard keys in `FOG_CONFIG` are:
+
+- `bucket` is the name of the s3 "bucket", rackspace "container", etc..
+- `file_options` is the options passed into Fog API `files.create()`
 
 ## Authorization
 
-When `SECRET_KEY` environment variable is provided, `attache` will require a valid `hmac` parameter. Uploads will be refused with `HTTP 401` error unless the `hmac` is correct.
+Without `SECRET_KEY` environment variable, attache works out-of-the-box: allowing uploads from any client.
 
-Uploads need these additional parameters:
+When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Uploads will be refused with `HTTP 401` error unless the `hmac` is correct.
+
+Upload request need additional parameters:
 
 * `uuid` is a uuid string
 * `expiration` is a unix timestamp of a future time. the significance is, if the timestamp has passed, the upload will be regarded as invalid
@@ -60,6 +69,8 @@ i.e.
 ``` ruby
 hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + expiration)
 ```
+
+NOTE: these authorization options can be transparently hooked up with the help of integration libraries. e.g. [attache_rails gem](https://github.com/choonkeat/attache_rails)
 
 ## Run
 

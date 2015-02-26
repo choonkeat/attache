@@ -3,19 +3,19 @@ require 'spec_helper'
 describe Attache::Download do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Download.new(app) }
-  let(:storage) { double(:storage) }
+  let(:storage_files) { double(:storage_files) }
   let(:localdir) { Dir.mktmpdir }
   let(:file) { Tempfile.new("file") }
   let(:thumbnail) { Tempfile.new("thumbnail") }
 
   before do
+    allow(Attache).to receive(:localdir).and_return(localdir)
+    allow(Attache.cache).to receive(:write).and_return(1)
+    allow(Attache.cache).to receive(:read).and_return(file.tap(&:open))
     allow(middleware).to receive(:content_type_of).and_return('image/gif')
     allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| thumbnail.tap(&:open)}
     allow(middleware).to receive(:rack_response_body_for).and_return([])
-    allow(Attache.cache).to receive(:write).and_return(1)
-    allow(Attache.cache).to receive(:read).and_return(file.tap(&:open))
-    allow(Attache).to receive(:storage).and_return(storage)
-    allow(Attache).to receive(:localdir).and_return(localdir)
+    allow(middleware).to receive(:storage_files).and_return(storage_files)
   end
 
   after do
@@ -132,6 +132,7 @@ describe Attache::Download do
     context 'not in local cache' do
       let(:read_results) { [nil, remotefile] }
       before do
+        allow(Attache).to receive(:storage).and_return(double(:storage))
         allow(Attache).to receive(:bucket).and_return("bucket")
         allow(Attache.cache).to receive(:read) do
           read_results.shift.tap do |file|
@@ -143,12 +144,11 @@ describe Attache::Download do
       context 'available remotely' do
         let!(:remotefile) { file }
 
-        it 'should get_object from storage' do
-          expect(storage).to receive(:get_object) do |bucket, path|
-            expect(bucket).to eq(Attache.bucket)
+        it 'should get from storage' do
+          expect(storage_files).to receive(:get) do |path|
             expect(path).not_to start_with('/')
             expect(path).to eq(File.join(*Attache.remotedir, relpath, filename))
-            double(:remote_object, body: "hello")
+            double(:remote_object)
           end
           expect(middleware).to receive(:make_thumbnail_for)
 
@@ -160,8 +160,8 @@ describe Attache::Download do
       context 'not available remotely' do
         let!(:remotefile) { nil }
 
-        it 'should get_object from storage' do
-          expect(storage).to receive(:get_object).and_return(nil)
+        it 'should get from storage' do
+          expect(storage_files).to receive(:get).and_return(nil)
           expect(middleware).not_to receive(:make_thumbnail_for)
 
           code, env, body = subject.call

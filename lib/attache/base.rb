@@ -10,4 +10,8 @@ class Attache::Base
   rescue Paperclip::Errors::NotIdentifiedByImageMagickError
     # best effort only
   end
+
+  def storage_files
+    @storage_files ||= Attache.storage.directories.get(Attache.bucket).files
+  end
 end

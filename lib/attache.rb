@@ -6,6 +6,7 @@ module Attache
                   :cache,
                   :logger,
                   :bucket,
+                  :file_options,
                   :geometry_alias,
                   :secret_key
   end
@@ -20,8 +21,11 @@ Attache.geometry_alias = JSON.parse(ENV.fetch('GEOMETRY_ALIAS') { '{}' })
 # e.g. GEOMETRY_ALIAS='{ "small": "64x64#", "large": "128x128x#" }'
 
 if ENV['FOG_CONFIG'] && (config = JSON.parse(ENV['FOG_CONFIG']))
-  Attache.storage = Fog::Storage.new(config.symbolize_keys)
-  Attache.bucket  = config['s3_bucket']
+  Attache.file_options = config.fetch('file_options')      { {} } # optional
+  Attache.bucket       = config.fetch('bucket')                   # required
+  Attache.storage      = Fog::Storage.new(config.except('bucket', 'file_options').symbolize_keys)
+else
+  Attache.file_options = {}
 end
 
 if Attache.storage

@@ -1,21 +1,19 @@
 require 'spec_helper'
-require 'stringio'
 
 describe Attache::Upload do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Upload.new(app) }
-  let(:storage) { double(:storage) }
+  let(:storage_files) { double(:storage_files) }
   let(:localdir) { Dir.mktmpdir }
   let(:file) { double(:file, closed?: true, path: localdir + "/image.jpg") }
 
   before do
-    allow(middleware).to receive(:content_type_of).and_return('image/jpeg')
-    allow(middleware).to receive(:geometry_of).and_return('100x100')
+    allow(Attache).to receive(:localdir).and_return(localdir)
     allow(Attache.cache).to receive(:write).and_return(1)
     allow(Attache.cache).to receive(:read).and_return(file)
-    allow(Attache).to receive(:storage).and_return(storage)
-    allow(Attache).to receive(:localdir).and_return(localdir)
-    allow(storage).to receive(:put_object)
+    allow(middleware).to receive(:content_type_of).and_return('image/jpeg')
+    allow(middleware).to receive(:geometry_of).and_return('100x100')
+    allow(middleware).to receive(:storage_files).and_return(storage_files)
   end
 
   after do
@@ -60,12 +58,15 @@ describe Attache::Upload do
     end
 
     context 'storage configured' do
-      before { allow(Attache).to receive(:bucket).and_return("bucket") }
+      before do
+        allow(Attache).to receive(:storage).and_return(double(:storage))
+        allow(Attache).to receive(:bucket).and_return("bucket")
+      end
 
       it 'should save file remotely' do
-        expect(storage).to receive(:put_object) do |bucket, path, io|
-          expect(bucket).to eq(Attache.bucket)
-          expect(path).not_to start_with('/')
+        expect(storage_files).to receive(:create) do |options|
+          expect(options[:key]).not_to start_with('/')
+          expect(options).to be_has_key(:body)
         end
         subject.call
       end
@@ -74,8 +75,9 @@ describe Attache::Upload do
         before { allow(Attache).to receive(:remotedir).and_return(nil) }
 
         it 'should remote file {relpath}/{filename}' do
-          expect(storage).to receive(:put_object) do |bucket, path, io|
-            expect(path).not_to start_with('/')
+          expect(storage_files).to receive(:create) do |options|
+            expect(options[:key]).not_to start_with('/')
+            expect(options).to be_has_key(:body)
           end
           subject.call
         end
@@ -86,7 +88,7 @@ describe Attache::Upload do
       before { allow(Attache).to receive(:bucket).and_return(nil) }
 
       it 'should save file remotely' do
-        expect(storage).not_to receive(:put_object)
+        expect(storage_files).not_to receive(:create)
         subject.call
       end
     end
