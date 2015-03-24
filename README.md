@@ -4,6 +4,8 @@
 
 Users will upload files directly into the `attache` server from their browser, bypassing the main app.
 
+### Upload
+
 > ```
 > PUT /upload?file=image123.jpg
 > ```
@@ -15,6 +17,8 @@ The main app front end will receive a unique `path` for each uploaded file - the
 > {"path":"pre/fix/image123.jpg","content_type":"image/jpeg","geometry":"1920x1080"}
 > ```
 > json response from attache after upload.
+
+### Download
 
 Whenever the main app wants to display the uploaded file, constrained to a particular size, it will use a helper method provided by the `attache` lib. e.g. `embed_attache(path)` which will generate the necessary, barebones markup.
 
@@ -37,6 +41,17 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 * When a specific size is requested, it will generate the resized file based on the local file and serve it in the http response
 * If cloud storage is defined, local disk cache will store up to a maximum of `CACHE_SIZE_BYTES` bytes. By default `CACHE_SIZE_BYTES` will 80% of available diskspace.
 
+### Delete
+
+> ```
+> DELETE /delete
+> paths=image1.jpg%0Aprefix2%2Fimage2.jpg%0Aimage3.jpg
+> ```
+
+Removing 1 or more files from the local cache and remote storage can be done via a http `POST` or `DELETE` request to `/delete`, with a `paths` parameter in the request body.
+
+The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for deletion: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`
+
 ## Configure
 
 Set your `FOG_CONFIG` environment variable to a json string, e.g.
@@ -54,11 +69,9 @@ Non-standard keys in `FOG_CONFIG` are:
 
 ## Authorization
 
-Without `SECRET_KEY` environment variable, attache works out-of-the-box: allowing uploads from any client.
+Without `SECRET_KEY` environment variable, attache works out-of-the-box: allowing uploads and deletes from any client.
 
-When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Uploads will be refused with `HTTP 401` error unless the `hmac` is correct.
-
-Upload request need additional parameters:
+When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Upload and Delete requests will be refused with `HTTP 401` error unless the `hmac` is correct. The additional parameters required for authorized request are:
 
 * `uuid` is a uuid string
 * `expiration` is a unix timestamp of a future time. the significance is, if the timestamp has passed, the upload will be regarded as invalid
@@ -88,7 +101,7 @@ Set your `FOG_CONFIG` config, git push to deploy
 
 * `attache` server should accept all kinds of files, not just images.
 * `embed_attache(path)` may render `div`, `img`, `iframe` - whatever is suitable for the file
-* cloud upload should be async via `sidekiq`
+* cloud upload & deletes should be async via `sidekiq`
 * `FOG_CONFIG` should allow for "Virtual Host", where different hostname can use a different cloud storage.
 
 ## License
