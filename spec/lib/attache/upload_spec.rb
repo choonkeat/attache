@@ -13,6 +13,7 @@ describe Attache::Upload do
     allow(Attache.cache).to receive(:read).and_return(file)
     allow(middleware).to receive(:content_type_of).and_return('image/jpeg')
     allow(middleware).to receive(:geometry_of).and_return('100x100')
+    allow(middleware).to receive(:filesize_of).and_return(123)
     allow(middleware).to receive(:storage_files).and_return(storage_files)
   end
 
@@ -38,6 +39,7 @@ describe Attache::Upload do
         expect(json).to be_has_key('content_type')
         expect(json).to be_has_key('geometry')
         expect(json).to be_has_key('path')
+        expect(json).to be_has_key('bytes')
 
         expect(json['path']).to match(%r{\A\w\w/})
       end

@@ -14,4 +14,8 @@ class Attache::Base
   def storage_files
     @storage_files ||= Attache.storage.directories.get(Attache.bucket).files
   end
+
+  def filesize_of(fullpath)
+    File.stat(fullpath).size
+  end
 end

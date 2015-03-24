@@ -7,7 +7,6 @@ class Attache::Download < Attache::Base
     case env['PATH_INFO']
     when %r{\A/view/}
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-
         file = begin
           Attache.cache.read(relpath)
         rescue Errno::ENOENT

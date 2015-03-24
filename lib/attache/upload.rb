@@ -37,6 +37,7 @@ class Attache::Upload < Attache::Base
             path:         relpath,
             content_type: content_type_of(fulldir),
             geometry:     geometry_of(fulldir),
+            bytes:        filesize_of(fulldir),
           }.to_json]]
         ensure
           file.close unless file.closed?
