@@ -1,5 +1,6 @@
 require 'sys/filesystem'
 require 'securerandom'
+require 'sucker_punch'
 require 'disk_store'
 require 'fileutils'
 require 'paperclip'

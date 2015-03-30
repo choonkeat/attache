@@ -14,7 +14,7 @@ describe Attache::Upload do
     allow(middleware).to receive(:content_type_of).and_return('image/jpeg')
     allow(middleware).to receive(:geometry_of).and_return('100x100')
     allow(middleware).to receive(:filesize_of).and_return(123)
-    allow_any_instance_of(Attache::Storage).to receive(:api).and_return(storage_api)
+    allow(Attache::Storage).to receive(:api).and_return(storage_api)
   end
 
   after do

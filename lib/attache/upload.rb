@@ -24,24 +24,20 @@ class Attache::Upload < Attache::Base
           return [500, headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         end
 
-        file = Attache.cache.read(relpath)
-        begin
-          fulldir = file.path
-          if Attache.storage && Attache.bucket
-            storage_files.create({
-              key: File.join(*Attache.remotedir, relpath),
-              body: file,
-            })
-          end
-          [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
-            path:         relpath,
-            content_type: content_type_of(fulldir),
-            geometry:     geometry_of(fulldir),
-            bytes:        filesize_of(fulldir),
-          }.to_json]]
-        ensure
-          file.close unless file.closed?
+        if Attache.storage && Attache.bucket
+          storage_files.create(relpath, {
+            key: File.join(*Attache.remotedir, relpath),
+          })
         end
+
+        file = Attache.cache.read(relpath)
+        file.close unless file.closed?
+        [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
+          path:         relpath,
+          content_type: content_type_of(file.path),
+          geometry:     geometry_of(file.path),
+          bytes:        filesize_of(file.path),
+        }.to_json]]
       when 'OPTIONS'
         [200, headers_with_cors, []]
       else

@@ -183,6 +183,8 @@ GEM
     shoulda-matchers (2.8.0)
       activesupport (>= 3.0.0)
     slop (3.6.0)
+    sucker_punch (1.4.0)
+      celluloid (~> 0.16.0)
     sys-filesystem (1.1.4)
       ffi
     thor (0.19.1)
@@ -205,4 +207,5 @@ DEPENDENCIES
   rack
   rspec
   shoulda
+  sucker_punch
   sys-filesystem

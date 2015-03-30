@@ -9,7 +9,7 @@ describe Attache::Delete do
   before do
     allow(Attache).to receive(:localdir).and_return(localdir)
     allow(Attache.cache).to receive(:delete).and_return(true)
-    allow_any_instance_of(Attache::Storage).to receive(:api).and_return(storage_api)
+    allow(Attache::Storage).to receive(:api).and_return(storage_api)
   end
 
   it "should passthrough irrelevant request" do

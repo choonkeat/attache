@@ -15,7 +15,7 @@ describe Attache::Download do
     allow(middleware).to receive(:content_type_of).and_return('image/gif')
     allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| thumbnail.tap(&:open)}
     allow(middleware).to receive(:rack_response_body_for).and_return([])
-    allow_any_instance_of(Attache::Storage).to receive(:api).and_return(storage_api)
+    allow(Attache::Storage).to receive(:api).and_return(storage_api)
   end
 
   after do
