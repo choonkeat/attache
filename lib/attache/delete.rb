@@ -21,9 +21,9 @@ class Attache::Delete < Attache::Base
         result[:local][relpath] = Attache.cache.delete(relpath)
         if Attache.storage && Attache.bucket
           Attache.logger.info "DELETING remote #{relpath}"
-          result[:remote][relpath] = storage_files.new(Attache.file_options.merge({
+          result[:remote][relpath] = storage_files.destroy({
             key: File.join(*Attache.remotedir, relpath),
-          })).destroy
+          })
         end
       end
       [200, headers_with_cors.merge('Content-Type' => 'text/json'), [result.to_json]]

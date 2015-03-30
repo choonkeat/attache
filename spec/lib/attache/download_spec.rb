@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Attache::Download do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Download.new(app) }
-  let(:storage_files) { double(:storage_files) }
+  let(:storage_api) { double(:storage_api) }
   let(:localdir) { Dir.mktmpdir }
   let(:file) { Tempfile.new("file") }
   let(:thumbnail) { Tempfile.new("thumbnail") }
@@ -15,7 +15,7 @@ describe Attache::Download do
     allow(middleware).to receive(:content_type_of).and_return('image/gif')
     allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| thumbnail.tap(&:open)}
     allow(middleware).to receive(:rack_response_body_for).and_return([])
-    allow(middleware).to receive(:storage_files).and_return(storage_files)
+    allow_any_instance_of(Attache::Storage).to receive(:api).and_return(storage_api)
   end
 
   after do
@@ -145,7 +145,7 @@ describe Attache::Download do
         let!(:remotefile) { file }
 
         it 'should get from storage' do
-          expect(storage_files).to receive(:get) do |path|
+          expect(storage_api).to receive(:get) do |path|
             expect(path).not_to start_with('/')
             expect(path).to eq(File.join(*Attache.remotedir, relpath, filename))
             double(:remote_object)
@@ -161,7 +161,7 @@ describe Attache::Download do
         let!(:remotefile) { nil }
 
         it 'should get from storage' do
-          expect(storage_files).to receive(:get).and_return(nil)
+          expect(storage_api).to receive(:get).and_return(nil)
           expect(middleware).not_to receive(:make_thumbnail_for)
 
           code, env, body = subject.call

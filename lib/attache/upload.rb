@@ -28,10 +28,10 @@ class Attache::Upload < Attache::Base
         begin
           fulldir = file.path
           if Attache.storage && Attache.bucket
-            storage_files.create(Attache.file_options.merge({
+            storage_files.create({
               key: File.join(*Attache.remotedir, relpath),
               body: file,
-            }))
+            })
           end
           [200, headers_with_cors.merge('Content-Type' => 'text/json'), [{
             path:         relpath,

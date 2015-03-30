@@ -13,6 +13,7 @@ require 'fog'
 
 require './lib/attache.rb'
 require './lib/attache/base.rb'
+require './lib/attache/storage.rb'
 require './lib/attache/upload.rb'
 require './lib/attache/delete.rb'
 require './lib/attache/file_response_body.rb'

@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Attache::Upload do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Upload.new(app) }
-  let(:storage_files) { double(:storage_files) }
+  let(:storage_api) { double(:storage_api) }
   let(:localdir) { Dir.mktmpdir }
   let(:file) { double(:file, closed?: true, path: localdir + "/image.jpg") }
 
@@ -14,7 +14,7 @@ describe Attache::Upload do
     allow(middleware).to receive(:content_type_of).and_return('image/jpeg')
     allow(middleware).to receive(:geometry_of).and_return('100x100')
     allow(middleware).to receive(:filesize_of).and_return(123)
-    allow(middleware).to receive(:storage_files).and_return(storage_files)
+    allow_any_instance_of(Attache::Storage).to receive(:api).and_return(storage_api)
   end
 
   after do
@@ -66,7 +66,7 @@ describe Attache::Upload do
       end
 
       it 'should save file remotely' do
-        expect(storage_files).to receive(:create) do |options|
+        expect(storage_api).to receive(:create) do |options|
           expect(options[:key]).not_to start_with('/')
           expect(options).to be_has_key(:body)
         end
@@ -77,7 +77,7 @@ describe Attache::Upload do
         before { allow(Attache).to receive(:remotedir).and_return(nil) }
 
         it 'should remote file {relpath}/{filename}' do
-          expect(storage_files).to receive(:create) do |options|
+          expect(storage_api).to receive(:create) do |options|
             expect(options[:key]).not_to start_with('/')
             expect(options).to be_has_key(:body)
           end
@@ -90,7 +90,7 @@ describe Attache::Upload do
       before { allow(Attache).to receive(:bucket).and_return(nil) }
 
       it 'should save file remotely' do
-        expect(storage_files).not_to receive(:create)
+        expect(storage_api).not_to receive(:create)
         subject.call
       end
     end

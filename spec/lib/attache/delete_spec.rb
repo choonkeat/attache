@@ -3,13 +3,13 @@ require 'spec_helper'
 describe Attache::Delete do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Delete.new(app) }
-  let(:storage_files) { double(:storage_files) }
+  let(:storage_api) { double(:storage_api) }
   let(:localdir) { Dir.mktmpdir }
 
   before do
     allow(Attache).to receive(:localdir).and_return(localdir)
     allow(Attache.cache).to receive(:delete).and_return(true)
-    allow(middleware).to receive(:storage_files).and_return(storage_files)
+    allow_any_instance_of(Attache::Storage).to receive(:api).and_return(storage_api)
   end
 
   it "should passthrough irrelevant request" do
@@ -50,7 +50,7 @@ describe Attache::Delete do
       end
 
       it 'should delete file remotely' do
-        expect(storage_files).to receive(:new) do |options|
+        expect(storage_api).to receive(:new) do |options|
           expect(['image1.jpg','image2.jpg']).to include(options[:key])
         end.twice.and_return(remote_file)
         subject.call
@@ -60,7 +60,7 @@ describe Attache::Delete do
         before { allow(Attache).to receive(:remotedir).and_return(nil) }
 
         it 'should remote file {relpath}/{filename}' do
-          expect(storage_files).to receive(:new) do |options|
+          expect(storage_api).to receive(:new) do |options|
             expect(['image1.jpg','image2.jpg']).to include(options[:key])
           end.twice.and_return(remote_file)
           subject.call
@@ -72,7 +72,7 @@ describe Attache::Delete do
       before { allow(Attache).to receive(:bucket).and_return(nil) }
 
       it 'should delete file remotely' do
-        expect(storage_files).not_to receive(:create)
+        expect(storage_api).not_to receive(:create)
         subject.call
       end
     end

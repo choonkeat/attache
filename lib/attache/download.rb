@@ -15,15 +15,8 @@ class Attache::Download < Attache::Base
         file ||= begin
           if Attache.storage && Attache.bucket
             remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
-            tmpfile = Tempfile.new('fog')
-            begin
-              bool = storage_files.get(remote_src_dir) do |data, remaining, content_length|
-                tmpfile.syswrite data
-              end
-              Attache.cache.write(relpath, tmpfile.tap(&:rewind)) if bool
-            ensure
-              tmpfile.close unless tmpfile.closed?
-              tmpfile.unlink
+            storage_files.get(remote_src_dir) do |tmpfile|
+              Attache.cache.write(relpath, tmpfile)
             end && Attache.cache.read(relpath)
           end
         rescue Exception # Excon::Errors, Fog::Errors::Error
