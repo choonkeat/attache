@@ -11,7 +11,7 @@ describe Attache::Download do
   before do
     allow(Attache).to receive(:localdir).and_return(localdir)
     allow(Attache.cache).to receive(:write).and_return(1)
-    allow(Attache.cache).to receive(:read).and_return(file.tap(&:open))
+    allow(Attache.cache).to receive(:fetch).and_return(file.tap(&:open))
     allow(middleware).to receive(:content_type_of).and_return('image/gif')
     allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| thumbnail.tap(&:open)}
     allow(middleware).to receive(:rack_response_body_for).and_return([])
@@ -130,26 +130,20 @@ describe Attache::Download do
     end
 
     context 'not in local cache' do
-      let(:read_results) { [nil, remotefile] }
       before do
-        allow(Attache).to receive(:storage).and_return(double(:storage))
-        allow(Attache).to receive(:bucket).and_return("bucket")
-        allow(Attache.cache).to receive(:read) do
-          read_results.shift.tap do |file|
-            raise Errno::ENOENT.new unless file
-          end
-        end
+        allow(Attache.cache).to receive(:fetch) {|relpath| storage_api.get(relpath)}
       end
 
       context 'available remotely' do
-        let!(:remotefile) { file }
-
-        it 'should get from storage' do
+        before do
           expect(storage_api).to receive(:get) do |path|
             expect(path).not_to start_with('/')
             expect(path).to eq(File.join(*Attache.remotedir, relpath, filename))
-            double(:remote_object)
+            file
           end
+        end
+
+        it 'should proceed normally' do
           expect(middleware).to receive(:make_thumbnail_for)
 
           code, env, body = subject.call
@@ -158,10 +152,9 @@ describe Attache::Download do
       end
 
       context 'not available remotely' do
-        let!(:remotefile) { nil }
+        before { expect(storage_api).to receive(:get).and_return(nil) }
 
-        it 'should get from storage' do
-          expect(storage_api).to receive(:get).and_return(nil)
+        it 'should respond not found' do
           expect(middleware).not_to receive(:make_thumbnail_for)
 
           code, env, body = subject.call

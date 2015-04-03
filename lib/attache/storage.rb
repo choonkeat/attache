@@ -1,21 +1,15 @@
 class Attache::Storage
   def self.api
-    Attache.storage.directories.get(Attache.bucket).files
+    Attache.storage.directories.new(key: Attache.bucket).files
   end
 
   def create(relpath, options)
     CreateJob.new.async.perform(relpath, options)
   end
 
-  def get(path)
-    tmpfile = Tempfile.new('fog')
-    bool = self.class.api.get(path) do |data, remaining, content_length|
-      tmpfile.syswrite data
-    end
-    yield tmpfile.tap(&:rewind) if bool
-  ensure
-    tmpfile.close unless tmpfile.closed?
-    tmpfile.unlink
+  def get(path, &block)
+    url = Attache.storage.directories.new(key: Attache.bucket).files.new(key: path).url(Time.now + 60)
+    open(url, &block)
   end
 
   def destroy(options)

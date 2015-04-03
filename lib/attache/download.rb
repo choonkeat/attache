@@ -8,20 +8,14 @@ class Attache::Download < Attache::Base
     when %r{\A/view/}
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
         file = begin
-          Attache.cache.read(relpath)
-        rescue Errno::ENOENT
-        end
-
-        file ||= begin
-          if Attache.storage && Attache.bucket
+          Attache.cache.fetch(relpath) do
             remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
-            storage_files.get(remote_src_dir) do |tmpfile|
-              Attache.cache.write(relpath, tmpfile)
-            end && Attache.cache.read(relpath)
+            storage_files.get(remote_src_dir)
           end
-        rescue Exception # Excon::Errors, Fog::Errors::Error
+        rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
           Attache.logger.error $@
           Attache.logger.error $!
+          nil
         end
 
         unless file
