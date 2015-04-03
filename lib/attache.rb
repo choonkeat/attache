@@ -35,8 +35,8 @@ if Attache.storage
       stat = Sys::Filesystem.stat("/")
       available = stat.block_size * stat.blocks_available
       (available * 0.8).floor # use 80% free disk by default
-    },
-    reaper_interval:   ENV.fetch('CACHE_EVICTION_INTERVAL_SECONDS') { 60 },
+    }.to_i,
+    reaper_interval:   ENV.fetch('CACHE_EVICTION_INTERVAL_SECONDS') { 60 }.to_i,
     eviction_strategy: :LRU,
   })
 else
