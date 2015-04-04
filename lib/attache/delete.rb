@@ -3,30 +3,27 @@ class Attache::Delete < Attache::Base
     @app = app
   end
 
-  def call(env)
+  def _call(env, config)
     case env['PATH_INFO']
     when '/delete'
       request  = Rack::Request.new(env)
       params   = request.params
 
-      if Attache.secret_key
-        unless hmac_valid?(params)
-          return [401, headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
+      if config.secret_key
+        unless config.hmac_valid?(params)
+          return [401, config.headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
         end
       end
 
-      result = Hash(local: {}, remote: {})
       params['paths'].to_s.split("\n").each do |relpath|
         Attache.logger.info "DELETING local #{relpath}"
-        result[:local][relpath] = Attache.cache.delete(relpath)
-        if Attache.storage && Attache.bucket
+        Attache.cache.delete(relpath)
+        if config.storage && config.bucket
           Attache.logger.info "DELETING remote #{relpath}"
-          result[:remote][relpath] = storage_files.destroy({
-            key: File.join(*Attache.remotedir, relpath),
-          })
+          config.async(:storage_destroy, relpath)
         end
       end
-      [200, headers_with_cors.merge('Content-Type' => 'text/json'), [result.to_json]]
+      [200, config.headers_with_cors, []]
     else
       @app.call(env)
     end

@@ -3,13 +3,18 @@ require 'spec_helper'
 describe Attache::Delete do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Delete.new(app) }
-  let(:storage_api) { double(:storage_api) }
-  let(:localdir) { Dir.mktmpdir }
+  let(:params) { {} }
+  let(:filename) { "hello#{rand}.gif" }
+  let(:reldirname) { "path#{rand}" }
+  let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
 
   before do
-    allow(Attache).to receive(:localdir).and_return(localdir)
-    allow(Attache.cache).to receive(:delete).and_return(true)
-    allow(Attache::Storage).to receive(:api).and_return(storage_api)
+    allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
+    allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
+  end
+
+  after do
+    FileUtils.rm_rf(Attache.localdir)
   end
 
   it "should passthrough irrelevant request" do
@@ -18,106 +23,100 @@ describe Attache::Delete do
   end
 
   context "deleting" do
-    let(:params) { Hash(paths: ['image1.jpg', 'image2.jpg'].join("\n")) }
+    let(:params) { Hash(paths: ['image1.jpg', filename].join("\n")) }
+
     subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/delete?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'DELETE') } }
 
     it 'should respond with json' do
-      code, env, body = subject.call
-      expect(env).to be_has_key('Access-Control-Allow-Origin')
-      expect(env['Content-Type']).to eq('text/json')
     end
 
     it 'should delete file locally' do
-      expect(Attache.cache).to receive(:delete).and_return(1)
-      code, env, body = subject.call
+      expect(Attache.cache).to receive(:delete).exactly(2).times
+      code, headers, body = subject.call
+      expect(code).to eq(200)
     end
 
     context 'delete fail locally' do
-      before { allow(Attache.cache).to receive(:delete).and_return(0) }
+      before do
+        expect(Attache.cache).to receive(:delete) do
+          raise Exception.new
+        end
+      end
 
       it 'should respond with error' do
-        code, env, body = subject.call
-        expect(code).to eq(200)
+        code, headers, body = subject.call
+        expect(code).to eq(500)
       end
     end
 
     context 'storage configured' do
-      let(:remote_file) { double(:remote_file) }
       before do
-        allow(Attache).to receive(:storage).and_return(double(:storage))
-        allow(Attache).to receive(:bucket).and_return("bucket")
-        expect(remote_file).to receive(:destroy).twice
+        allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
+        allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
       end
 
       it 'should delete file remotely' do
-        expect(storage_api).to receive(:new) do |options|
-          expect(['image1.jpg','image2.jpg']).to include(options[:key])
-        end.twice.and_return(remote_file)
+        expect_any_instance_of(Attache::VHost).to receive(:async) do |instance, method, path|
+          expect(method).to eq(:storage_destroy)
+        end.exactly(2).times
         subject.call
-      end
-
-      context 'remotedir=nil' do
-        before { allow(Attache).to receive(:remotedir).and_return(nil) }
-
-        it 'should remote file {relpath}/{filename}' do
-          expect(storage_api).to receive(:new) do |options|
-            expect(['image1.jpg','image2.jpg']).to include(options[:key])
-          end.twice.and_return(remote_file)
-          subject.call
-        end
       end
     end
 
     context 'storage NOT configured' do
-      before { allow(Attache).to receive(:bucket).and_return(nil) }
-
-      it 'should delete file remotely' do
-        expect(storage_api).not_to receive(:create)
+      it 'should NOT delete file remotely' do
+        expect_any_instance_of(Attache::VHost).not_to receive(:async)
         subject.call
       end
     end
 
     context 'with secret_key' do
-      let(:secret_key) { "topsecret" }
-      let(:expiration) { (Time.now + 10).to_i }
-      before { allow(Attache).to receive(:secret_key).and_return(secret_key) }
+      let(:secret_key) { "topsecret#{rand}" }
+
+      before do
+        allow_any_instance_of(Attache::VHost).to receive(:secret_key).and_return(secret_key)
+      end
 
       it 'should respond with error' do
-        code, env, body = subject.call
+        code, headers, body = subject.call
         expect(code).to eq(401)
+        expect(headers['X-Exception']).to eq('Authorization failed')
       end
 
       context 'invalid auth' do
+        let(:expiration) { (Time.now + 10).to_i }
         let(:uuid) { "hi#{rand}" }
         let(:digest) { OpenSSL::Digest.new('sha1') }
-        let(:params) { Hash(paths: ['image1.jpg', 'image2.jpg'].join("\n"), expiration: expiration, uuid: uuid, hmac: OpenSSL::HMAC.hexdigest(digest, "wrong#{secret_key}", "#{uuid}#{expiration}")) }
+        let(:params) { Hash(file: filename, expiration: expiration, uuid: uuid, hmac: OpenSSL::HMAC.hexdigest(digest, "wrong#{secret_key}", "#{uuid}#{expiration}")) }
 
         it 'should respond with error' do
-          code, env, body = subject.call
+          code, headers, body = subject.call
           expect(code).to eq(401)
+          expect(headers['X-Exception']).to eq('Authorization failed')
         end
       end
 
       context 'valid auth' do
+        let(:expiration) { (Time.now + 10).to_i }
         let(:uuid) { "hi#{rand}" }
         let(:digest) { OpenSSL::Digest.new('sha1') }
-        let(:params) { Hash(paths: ['image1.jpg', 'image2.jpg'].join("\n"), expiration: expiration, uuid: uuid, hmac: OpenSSL::HMAC.hexdigest(digest, secret_key, "#{uuid}#{expiration}")) }
+        let(:params) { Hash(file: filename, expiration: expiration, uuid: uuid, hmac: OpenSSL::HMAC.hexdigest(digest, secret_key, "#{uuid}#{expiration}")) }
 
         it 'should respond with success' do
-          code, env, body = subject.call
+          code, headers, body = subject.call
           expect(code).to eq(200)
         end
 
         context 'expired' do
-          let(:expiration) { (Time.now - 1).to_i }
+          let(:expiration) { (Time.now - 1).to_i } # the past
 
           it 'should respond with error' do
-            code, env, body = subject.call
+            code, headers, body = subject.call
             expect(code).to eq(401)
+            expect(headers['X-Exception']).to eq('Authorization failed')
           end
         end
       end
     end
   end
-
 end

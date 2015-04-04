@@ -3,14 +3,14 @@ class Attache::Download < Attache::Base
     @app = app
   end
 
-  def call(env)
+  def _call(env, config)
     case env['PATH_INFO']
     when %r{\A/view/}
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
+        geometry = config.geometry_alias[geometry] || geometry
         file = begin
           Attache.cache.fetch(relpath) do
-            remote_src_dir = File.join(*Attache.remotedir, dirname, basename)
-            storage_files.get(remote_src_dir)
+            config.storage_get(relpath) if config.storage && config.bucket
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
           Attache.logger.error $@
@@ -19,7 +19,7 @@ class Attache::Download < Attache::Base
         end
 
         unless file
-          return [404, JSON.parse(download_headers), []]
+          return [404, config.download_headers, []]
         end
 
         thumbnail = if geometry == 'original'
@@ -31,7 +31,7 @@ class Attache::Download < Attache::Base
 
         headers = {
           'Content-Type' => content_type_of(thumbnail.path),
-        }.merge(JSON.parse(download_headers))
+        }.merge(config.download_headers)
 
         [200, headers, rack_response_body_for(thumbnail)].tap do
           unless file == thumbnail # cleanup
@@ -56,11 +56,7 @@ class Attache::Download < Attache::Base
       geometry = CGI.unescape parts.pop
       dirname  = parts.join('/')
       relpath  = File.join(dirname, basename)
-      yield dirname, Attache.geometry_alias[geometry] || geometry, basename, relpath
-    end
-
-    def download_headers
-      ENV.fetch('DOWNLOAD_HEADERS') { '{}' }
+      yield dirname, geometry, basename, relpath
     end
 
     def make_thumbnail_for(file, geometry, extension)

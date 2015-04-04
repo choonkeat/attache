@@ -3,23 +3,19 @@ require 'spec_helper'
 describe Attache::Download do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Download.new(app) }
-  let(:storage_api) { double(:storage_api) }
-  let(:localdir) { Dir.mktmpdir }
-  let(:file) { Tempfile.new("file") }
-  let(:thumbnail) { Tempfile.new("thumbnail") }
+  let(:params) { {} }
+  let(:filename) { "hello#{rand}.gif" }
+  let(:reldirname) { "path#{rand}" }
+  let(:geometry) { CGI.escape('2x2#') }
+  let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
 
   before do
-    allow(Attache).to receive(:localdir).and_return(localdir)
-    allow(Attache.cache).to receive(:write).and_return(1)
-    allow(Attache.cache).to receive(:fetch).and_return(file.tap(&:open))
-    allow(middleware).to receive(:content_type_of).and_return('image/gif')
-    allow(middleware).to receive(:make_thumbnail_for) {|file, geometry, extension| thumbnail.tap(&:open)}
-    allow(middleware).to receive(:rack_response_body_for).and_return([])
-    allow(Attache::Storage).to receive(:api).and_return(storage_api)
+    allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
+    allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
   end
 
   after do
-    FileUtils.rm_r(Dir[File.join(localdir, '*')])
+    FileUtils.rm_rf(Attache.localdir)
   end
 
   it "should passthrough irrelevant request" do
@@ -27,138 +23,58 @@ describe Attache::Download do
     expect(code).to eq 200
   end
 
-  describe '#parse_path_info' do
-    it "should work" do
-      middleware.send(:parse_path_info, "one/two/three/10x20%23/file%20extension.jpg") do |dirname, geometry, basename, relpath|
-        expect(dirname).to  eq "one/two/three"
-        expect(geometry).to eq "10x20#"
-        expect(basename).to eq "file extension.jpg"
-        expect(relpath).to eq File.join("one/two/three/file extension.jpg")
-      end
-    end
-
-    context "with GEOMETRY_ALIAS" do
-      before { allow(Attache).to receive(:geometry_alias).and_return("small" => "64x64#", "large" => "128x128>") }
-
-      it "should apply Attache.geometry_alias" do
-        middleware.send(:parse_path_info, "one/two/three/small/file%20extension.jpg") do |dirname, geometry, basename, relpath|
-          expect(geometry).to eq "64x64#"
-        end
-        middleware.send(:parse_path_info, "one/two/three/large/file%20extension.jpg") do |dirname, geometry, basename, relpath|
-          expect(geometry).to eq "128x128>"
-        end
-      end
-      it "should use value as-is when lookup fail" do
-        middleware.send(:parse_path_info, "one/two/three/notfound/file%20extension.jpg") do |dirname, geometry, basename, relpath|
-          expect(geometry).to eq "notfound"
-        end
-      end
-    end
-  end
-
   context 'downloading' do
-    let(:uploader) { Attache::Upload.new(app) }
-    let(:filename) { "image#{rand}.gif" }
-    let(:geometry) { "10x10>" }
-    let(:relpath) { File.dirname(uploader.send(:generate_relpath, filename)) }
-    let(:fullpath) {
-      File.join(localdir, relpath, filename).tap {|p|
-        FileUtils.mkdir_p(File.dirname(p))
-        open(p, 'wb') {|f| f.write(open('spec/fixtures/transparent.gif', 'rb').read) }
-      }
-    }
-    let(:cached_dst_path) { File.join(Attache.localdir, relpath, middleware.send(:sanitize_geometry_path, geometry), filename) }
-    let(:rel_dir)  { File.dirname(fullpath[localdir.length+1..-1]) }
-    let(:geometrypath) { "#{rel_dir}/#{CGI.escape(geometry)}/#{filename}" }
-
-    subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{geometrypath}", {}) } }
-
-    it 'should send thumbnail' do
-      expect(middleware).to receive(:make_thumbnail_for)
-
-      code, env, body = subject.call
-
-      expect(env['X-Exception']).to eq(nil)
-    end
-
-    it 'should keep file.open for response' do
-      expect(middleware).to receive(:rack_response_body_for) do |file|
-        expect(file).not_to be_closed
-      end
-
-      code, env, body = subject.call
-
-      expect(env['X-Exception']).to eq(nil)
-    end
-
-    it 'should close original file' do
-      expect(file).to receive(:close)
-
-      code, env, body = subject.call
-
-      expect(env['X-Exception']).to eq(nil)
-    end
-
-    context 'geometry is "original"' do
-      let(:geometry) { 'original' }
-
-      it 'should send original file' do
-        expect(middleware).not_to receive(:make_thumbnail_for)
-
-        code, env, body = subject.call
-
-        expect(env['X-Exception']).to eq(nil)
-      end
-
-      it 'should keep file.open for response' do
-        expect(middleware).to receive(:rack_response_body_for) do |file|
-          expect(file).not_to be_closed
-        end
-
-        code, env, body = subject.call
-
-        expect(env['X-Exception']).to eq(nil)
-      end
-
-      it 'should not close original file' do
-        expect(file).not_to receive(:close)
-
-        code, env, body = subject.call
-
-        expect(env['X-Exception']).to eq(nil)
-      end
-    end
+    subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{reldirname}/#{geometry}/#{filename}", {}) } }
 
     context 'not in local cache' do
-      before do
-        allow(Attache.cache).to receive(:fetch) {|relpath| storage_api.get(relpath)}
+      context 'not available remotely' do
+        it 'should respond not found' do
+          code, headers, body = subject.call
+          expect(code).to eq(404)
+        end
       end
 
       context 'available remotely' do
         before do
-          expect(storage_api).to receive(:get) do |path|
-            expect(path).not_to start_with('/')
-            expect(path).to eq(File.join(*Attache.remotedir, relpath, filename))
-            file
-          end
+          allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
+          allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
+          allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(file)
         end
 
         it 'should proceed normally' do
-          expect(middleware).to receive(:make_thumbnail_for)
-
-          code, env, body = subject.call
+          code, headers, body = subject.call
           expect(code).to eq(200)
         end
       end
+    end
 
-      context 'not available remotely' do
-        before { expect(storage_api).to receive(:get).and_return(nil) }
+    context 'in local cache' do
+      before do
+        Attache.cache.write("#{reldirname}/#{filename}", file)
+      end
 
-        it 'should respond not found' do
-          expect(middleware).not_to receive(:make_thumbnail_for)
+      it 'should send thumbnail' do
+        expect_any_instance_of(middleware.class).to receive(:make_thumbnail_for) do
+          Tempfile.new('download').tap do |t|
+            t.binmode
+            t.write IO.binread("spec/fixtures/transparent.gif")
+          end.tap(&:open)
+        end
+        code, headers, body = subject.call
+        expect(code).to eq(200)
+        expect(headers['Content-Type']).to eq('image/gif')
+      end
 
-          code, env, body = subject.call
-          expect(code).to eq(404)
+      context 'geometry is "original"' do
+        let(:geometry) { CGI.escape('original') }
+
+        it 'should send original file' do
+          expect_any_instance_of(middleware.class).not_to receive(:make_thumbnail_for)
+          code, headers, body = subject.call
+          response_content = ''
+          body.each {|p| response_content += p }
+          original_content = file.tap(&:rewind).read
+          expect(response_content).to eq(original_content)
         end
       end
     end
