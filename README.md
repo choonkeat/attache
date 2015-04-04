@@ -54,18 +54,28 @@ The `paths` value should be delimited by the newline character, aka `\n`. In the
 
 ## Configure
 
-Set your `FOG_CONFIG` environment variable to a json string, e.g.
+`LOCAL_DIR` is where your local disk cache will be. By default, attache will use a system assigned temporary directory which may not be the same everytime you run attache.
+
+`CACHE_SIZE_BYTES` determines how much disk space will be used for the local disk cache. If the size of cache exceeds, least recently used files will be evicted after `CACHE_EVICTION_INTERVAL_SECONDS` duration.
+
+`VHOST` is the main config env variable. The content is expected to be a `json` string where the json keys are the expected request hostname. e.g. if your attache instance uses a different s3 config when request comes in as `example1.com` vs `example2.net`, then `VHOST` may look something like
 
 ```
-export FOG_CONFIG='{"provider":"AWS", "aws_access_key_id":"REPLACE", "aws_secret_access_key":"REPLACE", "bucket":"demo" }'
+VHOST='{ "example1.com":"...", "example2.net":"..."}'
 ```
 
-Refer to [fog documentation](http://fog.io/storage/) for configuration details of `Fog::Storage.new`
+the value of each hostname is another `json` with the following keys
 
-Non-standard keys in `FOG_CONFIG` are:
+* `SECRET_KEY` see Authorization section below
+* `FOG_CONFIG` refer to [fog documentation](http://fog.io/storage/) for configuration details of `Fog::Storage.new`; but we have a non-standard key
+    * `bucket` is the name of the s3 "bucket", rackspace "container", etc..
 
-- `bucket` is the name of the s3 "bucket", rackspace "container", etc..
-- `file_options` is the options passed into Fog API `files.create()`
+Full example:
+
+```
+VHOST='{"example1.com":{"SECRET_KEY":"topsecret","FOG_CONFIG":{"provider":"Google","google_storage_access_key_id":"aaaaa","google_storage_secret_access_key":"bbbb","bucket":"cccc"}}}'
+```
+
 
 ## Authorization
 

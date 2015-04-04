@@ -3,7 +3,6 @@ class Attache::VHost
 
   attr_accessor :remotedir,
                 :secret_key,
-                :file_options,
                 :bucket,
                 :storage,
                 :geometry_alias,
@@ -16,11 +15,8 @@ class Attache::VHost
     self.remotedir  = env['REMOTE_DIR'] # nil means no fixed top level remote directory, and that's fine.
     self.secret_key = env['SECRET_KEY'] # nil means no auth check; anyone can upload a file
     if env['FOG_CONFIG']
-      self.file_options = env['FOG_CONFIG'].fetch('file_options')      { {} } # optional
-      self.bucket       = env['FOG_CONFIG'].fetch('bucket')                   # required
-      self.storage      = Fog::Storage.new(env['FOG_CONFIG'].except('bucket', 'file_options').symbolize_keys)
-    else
-      self.file_options = {}
+      self.bucket       = env['FOG_CONFIG'].fetch('bucket')
+      self.storage      = Fog::Storage.new(env['FOG_CONFIG'].except('bucket').symbolize_keys)
     end
     self.geometry_alias = env.fetch('GEOMETRY_ALIAS') { {} }
     # e.g. GEOMETRY_ALIAS='{ "small": "64x64#", "large": "128x128x#" }'
