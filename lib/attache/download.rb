@@ -9,7 +9,8 @@ class Attache::Download < Attache::Base
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
         geometry = config.geometry_alias[geometry] || geometry
         file = begin
-          Attache.cache.fetch(relpath) do
+          cachekey = File.join(request_hostname(env), relpath)
+          Attache.cache.fetch(cachekey) do
             config.storage_get(relpath) if config.storage && config.bucket
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error

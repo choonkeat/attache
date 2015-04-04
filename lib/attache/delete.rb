@@ -17,7 +17,8 @@ class Attache::Delete < Attache::Base
 
       params['paths'].to_s.split("\n").each do |relpath|
         Attache.logger.info "DELETING local #{relpath}"
-        Attache.cache.delete(relpath)
+        cachekey = File.join(request_hostname(env), relpath)
+        Attache.cache.delete(cachekey)
         if config.storage && config.bucket
           Attache.logger.info "DELETING remote #{relpath}"
           config.async(:storage_destroy, relpath)

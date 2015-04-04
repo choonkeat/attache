@@ -19,12 +19,12 @@ describe Attache::Download do
   end
 
   it "should passthrough irrelevant request" do
-    code, env = middleware.call Rack::MockRequest.env_for('http://example.com', {})
+    code, env = middleware.call Rack::MockRequest.env_for('http://example.com', "HTTP_HOST" => "example.com")
     expect(code).to eq 200
   end
 
   context 'downloading' do
-    subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{reldirname}/#{geometry}/#{filename}", {}) } }
+    subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{reldirname}/#{geometry}/#{filename}", "HTTP_HOST" => "example.com") } }
 
     context 'not in local cache' do
       context 'not available remotely' do
@@ -50,7 +50,7 @@ describe Attache::Download do
 
     context 'in local cache' do
       before do
-        Attache.cache.write("#{reldirname}/#{filename}", file)
+        Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
       end
 
       it 'should send thumbnail' do

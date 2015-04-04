@@ -18,15 +18,16 @@ class Attache::Upload < Attache::Base
         end
 
         relpath = generate_relpath(params['file'])
+        cachekey = File.join(request_hostname(env), relpath)
 
-        bytes_wrote = Attache.cache.write(relpath, request.body)
+        bytes_wrote = Attache.cache.write(cachekey, request.body)
         if bytes_wrote == 0
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         end
 
         config.async(:storage_create, relpath) if config.storage && config.bucket
 
-        file = Attache.cache.read(relpath)
+        file = Attache.cache.read(cachekey)
         file.close unless file.closed?
         [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [{
           path:         relpath,

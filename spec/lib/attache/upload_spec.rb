@@ -17,14 +17,14 @@ describe Attache::Upload do
   end
 
   it "should passthrough irrelevant request" do
-    code, headers, body = middleware.call Rack::MockRequest.env_for('http://example.com', {})
+    code, headers, body = middleware.call Rack::MockRequest.env_for('http://example.com', "HTTP_HOST" => "example.com")
     expect(code).to eq 200
   end
 
   context "uploading" do
     let(:params) { Hash(file: filename) }
 
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', input: file) } }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', input: file, "HTTP_HOST" => "example.com") } }
 
     it 'should respond successfully with json' do
       code, headers, body = subject.call
@@ -40,7 +40,7 @@ describe Attache::Upload do
       json = JSON.parse(body.join(''))
       relpath = json['path']
       expect(relpath).to end_with(params[:file])
-      expect(Attache.cache.read(relpath).tap(&:close)).to be_kind_of(File)
+      expect(Attache.cache.read('example.com/' + relpath).tap(&:close)).to be_kind_of(File)
     end
 
     context 'save fail locally' do

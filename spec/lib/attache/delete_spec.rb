@@ -25,13 +25,15 @@ describe Attache::Delete do
   context "deleting" do
     let(:params) { Hash(paths: ['image1.jpg', filename].join("\n")) }
 
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/delete?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'DELETE') } }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/delete?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'DELETE', "HTTP_HOST" => "example.com") } }
 
     it 'should respond with json' do
     end
 
     it 'should delete file locally' do
-      expect(Attache.cache).to receive(:delete).exactly(2).times
+      expect(Attache.cache).to receive(:delete) do |path|
+        expect(path).to start_with('example.com')
+      end.exactly(2).times
       code, headers, body = subject.call
       expect(code).to eq(200)
     end

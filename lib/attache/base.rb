@@ -1,6 +1,6 @@
 class Attache::Base
   def call(env)
-    if vhost = vhost_for(env['HTTP_X_FORWARDED_HOST'] || env['HTTP_HOST'])
+    if vhost = vhost_for(request_hostname(env))
       dup._call(env, vhost)
     else
       @app.call(env)
@@ -9,6 +9,10 @@ class Attache::Base
 
   def vhost_for(host)
     Attache::VHost.new(Attache.vhost[host])
+  end
+
+  def request_hostname(env)
+    env['HTTP_X_FORWARDED_HOST'] || env['HTTP_HOST'] || "unknown.host"
   end
 
   def content_type_of(fullpath)
