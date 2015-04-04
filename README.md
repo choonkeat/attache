@@ -58,28 +58,25 @@ The `paths` value should be delimited by the newline character, aka `\n`. In the
 
 `CACHE_SIZE_BYTES` determines how much disk space will be used for the local disk cache. If the size of cache exceeds, least recently used files will be evicted after `CACHE_EVICTION_INTERVAL_SECONDS` duration.
 
-`VHOST` is the main config env variable. The content is expected to be a `json` string where the json keys are the expected request hostname. e.g. if your attache instance uses a different s3 config when request comes in as `example1.com` vs `example2.net`, then `VHOST` may look something like
+### Virtual Host
 
-```
-VHOST='{ "example1.com":"...", "example2.net":"..."}'
-```
+`attache` can use a different config (and backup files into a different cloud service) depending on the request hostname that it was accessed by.
 
-the value of each hostname is another `json` with the following keys
+This allows a single attache server to be the workhorse for multiple different apps. Refer to `config/vhost.example.yml` file for configuration details.
 
-* `SECRET_KEY` see Authorization section below
-* `FOG_CONFIG` refer to [fog documentation](http://fog.io/storage/) for configuration details of `Fog::Storage.new`; but we have a non-standard key
-    * `bucket` is the name of the s3 "bucket", rackspace "container", etc..
+At boot time, `attache` server will first look at `VHOST` environment variable. If that is missing, it will load the content of `config/vhost.yml`. Either one **MUST** exist.
 
-Full example:
+If you do not want to write down sensitive information like access key and secrets into a `config/vhost.yml` file, you can convert the entire content into `json` format
 
-```
-VHOST='{"example1.com":{"SECRET_KEY":"topsecret","FOG_CONFIG":{"provider":"Google","google_storage_access_key_id":"aaaaa","google_storage_secret_access_key":"bbbb","bucket":"cccc"}}}'
+``` 
+ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'
 ```
 
+and assign it to the `VHOST` environment variable instead.
 
-## Authorization
+#### Authorization configuration
 
-Without `SECRET_KEY` environment variable, attache works out-of-the-box: allowing uploads and deletes from any client.
+Without `SECRET_KEY`, attache works out-of-the-box: allowing uploads and deletes from any client.
 
 When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Upload and Delete requests will be refused with `HTTP 401` error unless the `hmac` is correct. The additional parameters required for authorized request are:
 

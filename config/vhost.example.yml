@@ -1,0 +1,21 @@
+# This is an example file. You can copy this file as `vhost.yml` and edit
+# the content with the correct values.
+
+# This section will only take effect if a request is made to `localhost:9292`
+"localhost:9292":
+  "SECRET_KEY": CHANGEME                         # this is the shared secret between your app and this attache server
+  "FOG_CONFIG":                                  #
+    "provider": Google                           # refer to `fog.io/storage` documentation
+    "google_storage_access_key_id": CHANGEME     #
+    "google_storage_secret_access_key": CHANGEME #
+    "bucket": CHANGEME                           # This `bucket` key is not standard Fog config. BUT attache server needs it
+
+# This section will only take effect if a request is made to `aws.lvh.me:9292`
+"aws.example.com":
+  "SECRET_KEY": CHANGEME
+  "FOG_CONFIG":
+    "provider": AWS
+    "aws_access_key_id": CHANGEME
+    "aws_secret_access_key": CHANGEME
+    "bucket": CHANGEME
+    "region": us-west-1

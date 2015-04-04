@@ -9,7 +9,7 @@ end
 
 Attache.logger     = Logger.new(STDOUT)
 Attache.localdir   = File.expand_path(ENV.fetch('LOCAL_DIR') { Dir.tmpdir })
-Attache.vhost      = JSON.parse(ENV.fetch('VHOST') { '{}' })
+Attache.vhost      = JSON.parse(ENV.fetch('VHOST') { YAML.load(IO.read('config/vhost.yml')).to_json })
 Attache.cache      = DiskStore.new(Attache.localdir, {
   cache_size: ENV.fetch('CACHE_SIZE_BYTES') {
     stat = Sys::Filesystem.stat("/")
