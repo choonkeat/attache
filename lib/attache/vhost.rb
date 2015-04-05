@@ -40,42 +40,46 @@ class Attache::VHost
     Rack::Utils.secure_compare(params['hmac'], hmac_for("#{params['uuid']}#{params['expiration']}"))
   end
 
-  def storage_get(relpath)
-    url = storage.directories.new(key: bucket).files.new({
-      key: File.join(*remotedir, relpath),
+  def storage_get(args)
+    url = remote_api.new({
+      key: File.join(*remotedir, args[:relpath]),
     }).url(Time.now + 60)
     open(url)
   end
 
-  def storage_create(relpath)
-    Attache.logger.info "[JOB] uploading #{relpath}"
-    storage.directories.new(key: bucket).files.create({
-      key: File.join(*remotedir, relpath),
-      body: Attache.cache.read(relpath),
+  def storage_create(args)
+    Attache.logger.info "[JOB] uploading #{args[:cachekey].inspect}"
+    remote_api.create({
+      key: File.join(*remotedir, args[:relpath]),
+      body: Attache.cache.read(args[:cachekey]),
     })
-    Attache.logger.info "[JOB] uploaded #{relpath}"
+    Attache.logger.info "[JOB] uploaded #{args[:cachekey]}"
   end
 
-  def storage_destroy(relpath)
-    Attache.logger.info "[JOB] deleting #{relpath}"
-    storage.directories.new(key: bucket).files.new({
-      key: File.join(*remotedir, relpath),
+  def storage_destroy(args)
+    Attache.logger.info "[JOB] deleting #{args[:relpath]}"
+    remote_api.new({
+      key: File.join(*remotedir, args[:relpath]),
     }).destroy
-    Attache.logger.info "[JOB] deleted #{relpath}"
+    Attache.logger.info "[JOB] deleted #{args[:relpath]}"
   end
 
-  def async(method, relpath)
-    Job.new.async.perform(method, env, relpath)
+  def remote_api
+    storage.directories.new(key: bucket).files
+  end
+
+  def async(method, args)
+    Job.new.async.perform(method, env, args)
   end
 
   class Job
     include ::SuckerPunch::Job
-    def perform(method, env, relpath)
+    def perform(method, env, args)
       config = Attache::VHost.new(env)
-      config.send(method, relpath)
+      config.send(method, args)
     rescue Exception
       puts "[JOB] #{$!}", $@
-      self.class.new.async.later(RETRY_DURATION, method, env, relpath)
+      self.class.new.async.later(RETRY_DURATION, method, env, args)
     end
   end
 end

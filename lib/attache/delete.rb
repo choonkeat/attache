@@ -21,7 +21,7 @@ class Attache::Delete < Attache::Base
         Attache.cache.delete(cachekey)
         if config.storage && config.bucket
           Attache.logger.info "DELETING remote #{relpath}"
-          config.async(:storage_destroy, relpath)
+          config.async(:storage_destroy, relpath: relpath)
         end
       end
       [200, config.headers_with_cors, []]

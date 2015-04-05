@@ -11,7 +11,7 @@ class Attache::Download < Attache::Base
         file = begin
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do
-            config.storage_get(relpath) if config.storage && config.bucket
+            config.storage_get(relpath: relpath) if config.storage && config.bucket
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
           Attache.logger.error $@

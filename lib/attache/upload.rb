@@ -25,7 +25,7 @@ class Attache::Upload < Attache::Base
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         end
 
-        config.async(:storage_create, relpath) if config.storage && config.bucket
+        config.async(:storage_create, relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
 
         file = Attache.cache.read(cachekey)
         file.close unless file.closed?
