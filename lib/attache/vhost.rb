@@ -1,6 +1,4 @@
 class Attache::VHost
-  RETRY_DURATION = ENV.fetch('CACHE_EVICTION_INTERVAL_SECONDS') { 60 }.to_i / 3
-
   attr_accessor :remotedir,
                 :secret_key,
                 :bucket,
@@ -68,17 +66,6 @@ class Attache::VHost
   end
 
   def async(method, args)
-    Job.new.async.perform(method, env, args)
-  end
-
-  class Job
-    include ::SuckerPunch::Job
-    def perform(method, env, args)
-      config = Attache::VHost.new(env)
-      config.send(method, args)
-    rescue Exception
-      puts "[JOB] #{$!}", $@
-      self.class.new.async.later(RETRY_DURATION, method, env, args)
-    end
+    ::Attache::Job.perform_async(method, env, args)
   end
 end

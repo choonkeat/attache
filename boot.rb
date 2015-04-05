@@ -1,9 +1,9 @@
 require 'sys/filesystem'
 require 'securerandom'
-require 'sucker_punch'
 require 'disk_store'
 require 'fileutils'
 require 'paperclip'
+require 'sidekiq'
 require 'tmpdir'
 require 'logger'
 require 'rack'
@@ -12,7 +12,16 @@ require 'uri'
 require 'cgi'
 require 'fog'
 
+if ENV['REDIS_PROVIDER'] || ENV['REDIS_URL']
+  # default sidekiq
+elsif ENV['INLINE_UPLOAD']
+  require 'sidekiq/testing/inline'
+else
+  require 'sucker_punch'
+end
+
 require './lib/attache.rb'
+require './lib/attache/job.rb'
 require './lib/attache/base.rb'
 require './lib/attache/vhost.rb'
 require './lib/attache/upload.rb'

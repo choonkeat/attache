@@ -10,6 +10,9 @@ gem 'excon', '~> 0.44.4' # https://github.com/excon/excon/issues/482
 
 gem 'sys-filesystem'
 gem 'disk_store'
+
+gem 'foreman'
+gem 'sidekiq'
 gem 'sucker_punch' # single-process Ruby asynchronous processing library
 
 group :development, :test do

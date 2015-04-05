@@ -58,25 +58,31 @@ The `paths` value should be delimited by the newline character, aka `\n`. In the
 
 `CACHE_SIZE_BYTES` determines how much disk space will be used for the local disk cache. If the size of cache exceeds, least recently used files will be evicted after `CACHE_EVICTION_INTERVAL_SECONDS` duration.
 
-### Virtual Host
+### Asynchronous upload (and delete)
 
-`attache` can use a different config (and backup files into a different cloud service) depending on the request hostname that it was accessed by.
+By default `attache` will upload to cloud storage using the lightweight, async processing library [sucker_punch](https://github.com/brandonhilkert/sucker_punch). This requires no additional setup (read: 1x free dyno)
 
-This allows a single attache server to be the workhorse for multiple different apps. Refer to `config/vhost.example.yml` file for configuration details.
+However if you prefer a more durable queue for reliable uploads, configuring `REDIS_PROVIDER` or `REDIS_URL` will switch `attache` to use a `redis` queue instead, via `sidekiq`. [Read Sidekiq's documentation](https://github.com/mperham/sidekiq/wiki/Using-Redis#using-an-env-variable) for details on these variables.
 
-At boot time, `attache` server will first look at `VHOST` environment variable. If that is missing, it will load the content of `config/vhost.yml`. If neither exist, the `attache` server run in development mode; uploaded files are only stored locally and may be evicted due to free space constraints.
+If for some weird reason you'd want the upload to cloud storage to be synchronous, set `INLINE_UPLOAD=1` instead.
 
-If you do not want to write down sensitive information like access key and secrets into a `config/vhost.yml` file, you can convert the entire content into `json` format
+### Cloud Storage Virtual Host
+
+`attache` uses a different config (and backup files into a different cloud service) depending on the request hostname that it was accessed by.
+
+This means a single attache server can be the workhorse for different apps. Refer to `config/vhost.example.yml` file for configuration details.
+
+At boot time, `attache` server will first look at `VHOST` environment variable. If that is missing, it will load the content of `config/vhost.yml`. If neither exist, the `attache` server run in development mode; uploaded files are only stored locally and may be evicted to free up disk space.
+
+If you do not want to write down sensitive information like aws access key and secrets into a `config/vhost.yml` file, you can convert the entire content into `json` format and assign it to the `VHOST` environment variable instead.
 
 ```
-ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'
+export VHOST=`ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'`
 ```
 
-and assign it to the `VHOST` environment variable instead.
+#### Virtual Host Authorization
 
-#### Authorization configuration
-
-Without `SECRET_KEY`, attache works out-of-the-box: allowing uploads and deletes from any client.
+By default `attache` will accept uploads and delete requests from any client.
 
 When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Upload and Delete requests will be refused with `HTTP 401` error unless the `hmac` is correct. The additional parameters required for authorized request are:
 
@@ -90,26 +96,21 @@ i.e.
 hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + expiration)
 ```
 
-NOTE: these authorization options can be transparently hooked up with the help of integration libraries. e.g. [attache_rails gem](https://github.com/choonkeat/attache_rails)
+This will be transparent to you when using integration libraries like [attache_rails gem](https://github.com/choonkeat/attache_rails)
 
 ## Run
 
-Run it like any Rack app
+`attache` is [a Procfile-based app](ddollar.github.io/foreman/), to run
 
 ```
-rackup
+foreman start
 ```
 
-## Heroku ready
-
-Set your `FOG_CONFIG` config, git push to deploy
+See [foreman](https://github.com/ddollar/foreman) for more details.
 
 ## Todo
 
-* `attache` server should accept all kinds of files, not just images.
-* `embed_attache(path)` may render `div`, `img`, `iframe` - whatever is suitable for the file
-* cloud upload & deletes should be async via `sidekiq`
-* `FOG_CONFIG` should allow for "Virtual Host", where different hostname can use a different cloud storage.
+Instead of an error, we should "resize" non-image files too. The response should just be a visual representation (image) of the file that was uploaded. i.e. if the file `pdf`, it is reasonable to respond with a `pdf` icon (or it's cover page) as an image.
 
 ## License
 
