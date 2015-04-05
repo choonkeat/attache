@@ -7,7 +7,6 @@ class Attache::Download < Attache::Base
     case env['PATH_INFO']
     when %r{\A/view/}
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-        geometry = config.geometry_alias[geometry] || geometry
         file = begin
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do

@@ -5,7 +5,6 @@ class Attache::VHost
                 :secret_key,
                 :bucket,
                 :storage,
-                :geometry_alias,
                 :download_headers,
                 :headers_with_cors,
                 :env
@@ -18,9 +17,9 @@ class Attache::VHost
       self.bucket       = env['FOG_CONFIG'].fetch('bucket')
       self.storage      = Fog::Storage.new(env['FOG_CONFIG'].except('bucket').symbolize_keys)
     end
-    self.geometry_alias = env.fetch('GEOMETRY_ALIAS') { {} }
-    # e.g. GEOMETRY_ALIAS='{ "small": "64x64#", "large": "128x128x#" }'
-    self.download_headers = env.fetch('DOWNLOAD_HEADERS') { {} }
+    self.download_headers = {
+      "Cache-Control" => "public, max-age=31536000"
+    }.merge(env['DOWNLOAD_HEADERS'] || {})
     self.headers_with_cors = {
       'Access-Control-Allow-Origin' => '*',
       'Access-Control-Allow-Methods' => 'POST, PUT',

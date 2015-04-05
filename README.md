@@ -64,11 +64,11 @@ The `paths` value should be delimited by the newline character, aka `\n`. In the
 
 This allows a single attache server to be the workhorse for multiple different apps. Refer to `config/vhost.example.yml` file for configuration details.
 
-At boot time, `attache` server will first look at `VHOST` environment variable. If that is missing, it will load the content of `config/vhost.yml`. Either one **MUST** exist.
+At boot time, `attache` server will first look at `VHOST` environment variable. If that is missing, it will load the content of `config/vhost.yml`. If neither exist, the `attache` server run in development mode; uploaded files are only stored locally and may be evicted due to free space constraints.
 
 If you do not want to write down sensitive information like access key and secrets into a `config/vhost.yml` file, you can convert the entire content into `json` format
 
-``` 
+```
 ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'
 ```
 
