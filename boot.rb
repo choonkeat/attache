@@ -22,6 +22,7 @@ end
 
 require './lib/attache.rb'
 require './lib/attache/job.rb'
+require './lib/attache/resize_job.rb'
 require './lib/attache/base.rb'
 require './lib/attache/vhost.rb'
 require './lib/attache/upload.rb'

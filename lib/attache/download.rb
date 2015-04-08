@@ -1,4 +1,8 @@
+require 'connection_pool'
+
 class Attache::Download < Attache::Base
+  RESIZE_JOB_POOL = ConnectionPool.new(JSON.parse(ENV.fetch('RESIZE_POOL') { '{ "size": 2, "timeout": 60 }' }).symbolize_keys) { Attache::ResizeJob.new }
+
   def initialize(app)
     @app = app
   end
@@ -60,12 +64,10 @@ class Attache::Download < Attache::Base
     end
 
     def make_thumbnail_for(file, geometry, extension)
-      thumbnail = Paperclip::Thumbnail.new(file, geometry: geometry, format: extension)
-      # weird output filenames can confuse imagemagick; sanitizing output basename
-      thumbnail.instance_variable_set('@basename', thumbnail.instance_variable_get('@basename').gsub(/[^\w\.]/, '_'))
-      thumbnail.make
-    rescue Paperclip::Errors::NotIdentifiedByImageMagickError
-      file
+      Attache.logger.info "[POOL] new job"
+      RESIZE_JOB_POOL.with do |job|
+        job.perform(file, geometry, extension)
+      end
     end
 
     def rack_response_body_for(file)
