@@ -1,6 +1,7 @@
 require 'connection_pool'
 
 class Attache::Download < Attache::Base
+  OUTPUT_EXTENSIONS = %w[png jpg jpeg gif]
   RESIZE_JOB_POOL = ConnectionPool.new(JSON.parse(ENV.fetch('RESIZE_POOL') { '{ "size": 2, "timeout": 60 }' }).symbolize_keys) { Attache::ResizeJob.new }
 
   def initialize(app)
@@ -30,6 +31,7 @@ class Attache::Download < Attache::Base
           file
         else
           extension = basename.split(/\W+/).last
+          extension = OUTPUT_EXTENSIONS.first unless OUTPUT_EXTENSIONS.index(extension.to_s.downcase)
           make_thumbnail_for(file.tap(&:close), geometry, extension)
         end
 
