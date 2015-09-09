@@ -53,16 +53,24 @@ describe Attache::Download do
         Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
       end
 
-      it 'should send thumbnail' do
-        expect_any_instance_of(middleware.class).to receive(:make_thumbnail_for) do
-          Tempfile.new('download').tap do |t|
-            t.binmode
-            t.write IO.binread("spec/fixtures/transparent.gif")
-          end.tap(&:open)
+      context 'extension is for output' do
+        let(:filename) { "hello#{rand}.JPg" }
+
+        it 'should output as jpg' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq("image/jpeg")
         end
-        code, headers, body = subject.call
-        expect(code).to eq(200)
-        expect(headers['Content-Type']).to eq('image/gif')
+      end
+
+      context 'extension is not for output' do
+        let(:filename) { "hello#{rand}.PdF" }
+
+        it 'should output as png' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('image/png')
+        end
       end
 
       context 'geometry is "original"' do
