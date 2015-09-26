@@ -8,5 +8,10 @@ class Attache::Outbox
   end
 
   def delete(hostname, relpath)
+    destpath = File.join(OUTBOX_DIR, hostname, relpath)
+    File.unlink(destpath)
+    Dir.unlink(destpath) while destpath = File.dirname(destpath)
+  rescue SystemCallError
+    # ignore delete failures
   end
 end
