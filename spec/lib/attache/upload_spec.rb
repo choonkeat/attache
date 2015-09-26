@@ -6,10 +6,12 @@ describe Attache::Upload do
   let(:params) { {} }
   let(:filename) { "hello#{rand}.gif" }
   let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
+  let(:hostname) { "example.com" }
 
   before do
     allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
     allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
+    allow(Attache.outbox).to receive(:write).and_return(1)
   end
 
   after do
@@ -17,14 +19,14 @@ describe Attache::Upload do
   end
 
   it "should passthrough irrelevant request" do
-    code, headers, body = middleware.call Rack::MockRequest.env_for('http://example.com', "HTTP_HOST" => "example.com")
+    code, headers, body = middleware.call Rack::MockRequest.env_for('http://' + hostname, "HTTP_HOST" => hostname)
     expect(code).to eq 200
   end
 
   context "uploading" do
     let(:params) { Hash(file: filename) }
 
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', input: file, "HTTP_HOST" => "example.com") } }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', input: file, "HTTP_HOST" => hostname) } }
 
     it 'should respond successfully with json' do
       code, headers, body = subject.call
@@ -40,7 +42,7 @@ describe Attache::Upload do
       json = JSON.parse(body.join(''))
       relpath = json['path']
       expect(relpath).to end_with(params[:file])
-      expect(Attache.cache.read('example.com/' + relpath).tap(&:close)).to be_kind_of(File)
+      expect(Attache.cache.read(hostname + '/' + relpath).tap(&:close)).to be_kind_of(File)
     end
 
     context 'save fail locally' do
@@ -55,9 +57,21 @@ describe Attache::Upload do
       end
     end
 
-    it 'should NOT save file remotely' do
-      expect_any_instance_of(Attache::VHost).not_to receive(:async)
-      subject.call
+    context 'storage not configured' do
+      before do
+        allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(nil)
+        allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(nil)
+      end
+
+      it 'should NOT save file remotely' do
+        expect_any_instance_of(Attache::VHost).not_to receive(:async)
+        subject.call
+      end
+
+      it 'should NOT save file in pending upload' do
+        expect(Attache.outbox).not_to receive(:write)
+        subject.call
+      end
     end
 
     context 'storage configured' do
@@ -67,9 +81,12 @@ describe Attache::Upload do
       end
 
       it 'should save file remotely' do
-        expect_any_instance_of(Attache::VHost).to receive(:async) do |instance, method, path|
-          expect(method).to eq(:storage_create)
-        end
+        expect_any_instance_of(Attache::VHost).to receive(:async).with(:storage_create, any_args)
+        subject.call
+      end
+
+      it 'should save file in pending upload' do
+        expect(Attache.outbox).to receive(:write).with(hostname, *any_args)
         subject.call
       end
     end
