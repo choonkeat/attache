@@ -4,7 +4,7 @@ describe Attache::Upload do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Upload.new(app) }
   let(:params) { {} }
-  let(:filename) { "hello#{rand}.gif" }
+  let(:filename) { "Exãmple#{rand}.gif" }
   let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
   let(:hostname) { "example.com" }
 
