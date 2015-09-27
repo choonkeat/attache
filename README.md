@@ -34,6 +34,7 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 > <img src="https://example.com/view/pre/fix/50x50%23/image123.jpg" />
 > ```
 > requesting for a geometry of `original` will return the uploaded file. this works well for non-image file uploads.
+> requesting for a geometry of `remote` will skip the local cache and serve from cloud storage.
 
 * Attache keeps the uploaded file in the local harddisk (a temp directory).
 * Attache will also upload the file into cloud storage if `FOG_CONFIG` is set
