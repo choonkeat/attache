@@ -5,7 +5,9 @@ class Attache::Job
     config = Attache::VHost.new(env)
     config.send(method, args.symbolize_keys)
   rescue Exception
-    puts "[JOB] #{$!}", $@
+    Attache.logger.error $@
+    Attache.logger.error $!
+    Attache.logger.error [method, args].inspect
     self.class.perform_in(RETRY_DURATION, method, env, args)
   end
 
@@ -25,5 +27,6 @@ class Attache::Job
   else
     include Sidekiq::Worker
     sidekiq_options :queue => :attache_vhost_jobs
+    sidekiq_retry_in {|count| RETRY_DURATION} # uncaught exception, retry after RETRY_DURATION
   end
 end
