@@ -17,7 +17,7 @@ class Attache::Upload < Attache::Base
           end
         end
 
-        relpath = generate_relpath(params['file'])
+        relpath = generate_relpath(Attache::Upload.sanitize params['file'])
         cachekey = File.join(request_hostname(env), relpath)
 
         bytes_wrote = Attache.cache.write(cachekey, request.body)
@@ -25,7 +25,14 @@ class Attache::Upload < Attache::Base
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         end
 
-        config.async(:storage_create, relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
+        if config.storage && config.bucket
+          request.body.rewind if request.body.respond_to?(:rewind)
+          if Attache.outbox.write(request_hostname(env), relpath, request.body) > 0
+            config.async(:storage_create, relpath: relpath, cachekey: cachekey)
+          else
+            return [500, config.headers_with_cors.merge('X-Exception' => 'Outbox file failed'), []]
+          end
+        end
 
         file = Attache.cache.read(cachekey)
         file.close unless file.closed?
@@ -47,6 +54,10 @@ class Attache::Upload < Attache::Base
     Attache.logger.error $@
     Attache.logger.error $!
     [500, { 'X-Exception' => $!.to_s }, []]
+  end
+
+  def self.sanitize(filename)
+    filename.to_s.gsub(/\%/, '_')
   end
 
   private

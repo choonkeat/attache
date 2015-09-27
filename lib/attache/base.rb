@@ -8,7 +8,8 @@ class Attache::Base
   end
 
   def vhost_for(host)
-    Attache::VHost.new(Attache.vhost[host])
+    config = Attache.vhost[host]
+    Attache::VHost.new(config && Hash('HOSTNAME' => host).merge(config))
   end
 
   def request_hostname(env)
