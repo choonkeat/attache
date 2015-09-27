@@ -89,6 +89,18 @@ describe Attache::Upload do
         expect(Attache.outbox).to receive(:write).with(hostname, *any_args)
         subject.call
       end
+
+      context 'save outbox failed' do
+        before do
+          allow(Attache.outbox).to receive(:write).and_return(0)
+        end
+
+        it 'should respond with error' do
+          code, headers, body = subject.call
+          expect(code).to eq(500)
+          expect(headers['X-Exception']).to eq('Outbox file failed')
+        end
+      end
     end
 
     context 'with secret_key' do

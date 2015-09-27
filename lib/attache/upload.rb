@@ -27,7 +27,7 @@ class Attache::Upload < Attache::Base
 
         if config.storage && config.bucket
           request.body.rewind if request.body.respond_to?(:rewind)
-          if Attache.outbox.write(request_hostname(env), relpath, request.body)
+          if Attache.outbox.write(request_hostname(env), relpath, request.body) > 0
             config.async(:storage_create, relpath: relpath, cachekey: cachekey)
           else
             return [500, config.headers_with_cors.merge('X-Exception' => 'Outbox file failed'), []]
