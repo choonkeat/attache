@@ -4,7 +4,7 @@ describe Attache::Upload do
   let(:app) { ->(env) { [200, env, "app"] } }
   let(:middleware) { Attache::Upload.new(app) }
   let(:params) { {} }
-  let(:filename) { "Exãmple#{rand}.gif" }
+  let(:filename) { "Exãmple %#{rand} %20.gif" }
   let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
   let(:hostname) { "example.com" }
 
@@ -37,11 +37,11 @@ describe Attache::Upload do
       end
     end
 
-    it 'should wrote to cache with params[:file] as filename' do
+    it 'should wrote to cache with Attache::Upload.sanitize(params[:file]) as filename' do
       code, headers, body = subject.call
       json = JSON.parse(body.join(''))
       relpath = json['path']
-      expect(relpath).to end_with(params[:file])
+      expect(relpath).to end_with(Attache::Upload.sanitize params[:file])
       expect(Attache.cache.read(hostname + '/' + relpath).tap(&:close)).to be_kind_of(File)
     end
 
