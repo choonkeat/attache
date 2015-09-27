@@ -37,11 +37,14 @@ class Attache::VHost
     Rack::Utils.secure_compare(params['hmac'], hmac_for("#{params['uuid']}#{params['expiration']}"))
   end
 
-  def storage_get(args)
-    url = remote_api.new({
+  def storage_url(args)
+    remote_api.new({
       key: File.join(*remotedir, args[:relpath]),
     }).url(Time.now + 60)
-    open(url)
+  end
+
+  def storage_get(args)
+    open storage_url(args)
   end
 
   def storage_create(args)
