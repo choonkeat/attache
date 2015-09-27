@@ -13,6 +13,9 @@ class Attache::Job
 
   if defined?(::SuckerPunch::Job)
     include ::SuckerPunch::Job
+    def later(sec, *args)
+      after(sec) { perform(*args) }
+    end
     def self.perform_async(*args)
       self.new.async.perform(*args)
     end

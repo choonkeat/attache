@@ -78,6 +78,7 @@ describe Attache::Upload do
       before do
         allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
         allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
+        allow_any_instance_of(Attache::VHost).to receive(:storage_create).and_return(nil)
       end
 
       it 'should save file remotely' do
