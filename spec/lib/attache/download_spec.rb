@@ -61,8 +61,9 @@ describe Attache::Download do
             response_content = ''
             body.each {|p| response_content += p }
             expect(response_content).to eq('')
-            expect(code).to eq(301)
+            expect(code).to eq(302)
             expect(headers['Location']).to eq(remote_url)
+            expect(headers['Cache-Control']).to eq("private, no-cache")
           end
         end
       end

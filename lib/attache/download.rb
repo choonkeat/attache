@@ -1,6 +1,7 @@
 require 'connection_pool'
 
 class Attache::Download < Attache::Base
+  REMOTE_GEOMETRY = ENV.fetch('REMOTE_GEOMETRY') { 'remote' }
   OUTPUT_EXTENSIONS = %w[png jpg jpeg gif]
   RESIZE_JOB_POOL = ConnectionPool.new(JSON.parse(ENV.fetch('RESIZE_POOL') { '{ "size": 2, "timeout": 60 }' }).symbolize_keys) { Attache::ResizeJob.new }
 
@@ -12,9 +13,12 @@ class Attache::Download < Attache::Base
     case env['PATH_INFO']
     when %r{\A/view/}
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-        if geometry == 'remote' && config.storage && config.bucket
-          headers = config.download_headers.merge('Location' => config.storage_url(relpath: relpath))
-          return [301, headers, []]
+        if geometry == REMOTE_GEOMETRY && config.storage && config.bucket
+          headers = config.download_headers.merge({
+                      'Location' => config.storage_url(relpath: relpath),
+                      'Cache-Control' => 'private, no-cache',
+                    })
+          return [302, headers, []]
         end
 
         file = begin
@@ -32,7 +36,7 @@ class Attache::Download < Attache::Base
           return [404, config.download_headers, []]
         end
 
-        thumbnail = if geometry == 'original' || geometry == 'remote'
+        thumbnail = if geometry == 'original' || geometry == REMOTE_GEOMETRY
           file
         else
           extension = basename.split(/\W+/).last
