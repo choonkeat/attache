@@ -5,7 +5,7 @@ describe Attache::Upload do
   let(:middleware) { Attache::Upload.new(app) }
   let(:params) { {} }
   let(:filename) { "Exãmple %#{rand} %20.gif" }
-  let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
+  let(:file) { StringIO.new(IO.binread("spec/fixtures/landscape.jpg"), 'rb') }
   let(:hostname) { "example.com" }
 
   before do
@@ -34,6 +34,7 @@ describe Attache::Upload do
       expect(headers['Content-Type']).to eq('text/json')
       JSON.parse(body.join('')).tap do |json|
         expect(json).to be_has_key('path')
+        expect(json['geometry']).to eq('4x3')
       end
     end
 

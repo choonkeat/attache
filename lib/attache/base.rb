@@ -23,7 +23,7 @@ class Attache::Base
   end
 
   def geometry_of(fullpath)
-    Paperclip::GeometryDetector.new(fullpath).make
+    Paperclip::Geometry.from_file(fullpath).tap(&:auto_orient)
   rescue Paperclip::Errors::NotIdentifiedByImageMagickError
     # best effort only
   end
