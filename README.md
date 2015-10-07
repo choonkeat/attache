@@ -115,6 +115,8 @@ See [foreman](https://github.com/ddollar/foreman) for more details.
 
 Instead of an error, we should "resize" non-image files too. The response should just be a visual representation (image) of the file that was uploaded. i.e. if the file `pdf`, it is reasonable to respond with a `pdf` icon (or it's cover page) as an image.
 
+NOTE: `pdf` thumbnail was implemented in https://github.com/choonkeat/attache/pull/2
+
 ## License
 
 MIT
