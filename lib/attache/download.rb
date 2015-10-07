@@ -29,6 +29,7 @@ class Attache::Download < Attache::Base
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
           Attache.logger.error $@
           Attache.logger.error $!
+          Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
           nil
         end
 
