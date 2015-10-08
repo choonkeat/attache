@@ -24,7 +24,7 @@ GEM
     disk_store (0.4.1)
       celluloid
       rake
-    excon (0.44.4)
+    excon (0.45.4)
     ffi (1.9.8)
     fission (0.5.0)
       CFPropertyList (~> 2.2)
@@ -211,7 +211,7 @@ PLATFORMS
 
 DEPENDENCIES
   disk_store
-  excon (~> 0.44.4)
+  excon (~> 0.45.4)
   fog
   foreman
   guard-rspec
