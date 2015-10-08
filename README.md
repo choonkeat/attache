@@ -38,11 +38,11 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 > requesting for a geometry of `original` will return the uploaded file. this works well for non-image file uploads.
 > requesting for a geometry of `remote` will skip the local cache and serve from cloud storage.
 
-* Attache keeps the uploaded file in the local harddisk (a temp directory).
+* Attache keeps the uploaded file in the local harddisk (a temp directory)
 * Attache will also upload the file into cloud storage if `FOG_CONFIG` is set
 * If the local file does not exist for some reason (e.g. cleared cache), it will download from cloud storage and store it locally
 * When a specific size is requested, it will generate the resized file based on the local file and serve it in the http response
-* If cloud storage is defined, local disk cache will store up to a maximum of `CACHE_SIZE_BYTES` bytes. By default `CACHE_SIZE_BYTES` will 80% of available diskspace.
+* If cloud storage is defined, local disk cache will store up to a maximum of `CACHE_SIZE_BYTES` bytes. By default `CACHE_SIZE_BYTES` will 80% of available diskspace
 
 ### Delete
 
@@ -53,7 +53,7 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 
 Removing 1 or more files from the local cache and remote storage can be done via a http `POST` or `DELETE` request to `/delete`, with a `paths` parameter in the request body.
 
-The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for deletion: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`
+The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for deletion: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`.
 
 ## Configure
 
@@ -63,7 +63,7 @@ The `paths` value should be delimited by the newline character, aka `\n`. In the
 
 ### Asynchronous upload (and delete)
 
-By default `attache` will upload to cloud storage using the lightweight, async processing library [sucker_punch](https://github.com/brandonhilkert/sucker_punch). This requires no additional setup (read: 1x free dyno)
+By default `attache` will upload to cloud storage using the lightweight, async processing library [sucker_punch](https://github.com/brandonhilkert/sucker_punch). This requires no additional setup (read: 1x free dyno).
 
 However if you prefer a more durable queue for reliable uploads, configuring `REDIS_PROVIDER` or `REDIS_URL` will switch `attache` to use a `redis` queue instead, via `sidekiq`. [Read Sidekiq's documentation](https://github.com/mperham/sidekiq/wiki/Using-Redis#using-an-env-variable) for details on these variables.
 
@@ -99,14 +99,14 @@ i.e.
 hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + expiration)
 ```
 
-This will be transparent to you when using integration libraries like [attache_rails gem](https://github.com/choonkeat/attache_rails)
+This will be transparent to you when using integration libraries like [attache_rails gem](https://github.com/choonkeat/attache_rails).
 
 ## Run
 
 `attache` is [a Procfile-based app](ddollar.github.io/foreman/), to run
 
 ```
-foreman start
+foreman start -p 9292
 ```
 
 See [foreman](https://github.com/ddollar/foreman) for more details.
