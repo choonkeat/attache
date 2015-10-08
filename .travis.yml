@@ -3,6 +3,6 @@ bundler_args: --retry=3 --jobs=8 --no-deployment
 cache: bundler
 sudo: false
 rvm:
-  - 2.2.1
+  - 2.2.3
 matrix:
   fast_finish: true

@@ -223,3 +223,6 @@ DEPENDENCIES
   sidekiq
   sucker_punch
   sys-filesystem
+
+BUNDLED WITH
+   1.10.6
