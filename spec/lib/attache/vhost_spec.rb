@@ -21,5 +21,21 @@ describe Attache::VHost do
 
       vhost.storage_create(relpath: relpath, cachekey: cachekey)
     end
+
+    it 'should ignore source file no longer exist (Errno::ENOENT) and continue deleting outbox' do
+      allow(Attache.cache).to receive(:read) { raise Errno::ENOENT }
+      expect(remote_api).not_to receive(:create)
+      expect(Attache.outbox).to receive(:delete).with(config['HOSTNAME'], 'relpath')
+
+      expect { vhost.storage_create(relpath: relpath, cachekey: cachekey) }.not_to raise_error
+    end
+
+    it 'should raise on other errors' do
+      allow(Attache.cache).to receive(:read) { raise Exception.new("Other") }
+      expect(remote_api).not_to receive(:create)
+      expect(Attache.outbox).not_to receive(:delete)
+
+      expect { vhost.storage_create(relpath: relpath, cachekey: cachekey) }.to raise_error
+    end
   end
 end

@@ -49,11 +49,18 @@ class Attache::VHost
 
   def storage_create(args)
     Attache.logger.info "[JOB] uploading #{args[:cachekey].inspect}"
-    remote_api.create({
-      key: File.join(*remotedir, args[:relpath]),
-      body: Attache.cache.read(args[:cachekey]),
-    })
-    Attache.logger.info "[JOB] uploaded #{args[:cachekey]}"
+    body = begin
+      Attache.cache.read(args[:cachekey])
+    rescue Errno::ENOENT
+      :no_entry # upload file no longer exist; likely deleted immediately after upload
+    end
+    unless body == :no_entry
+      remote_api.create({
+        key: File.join(*remotedir, args[:relpath]),
+        body: body,
+      })
+      Attache.logger.info "[JOB] uploaded #{args[:cachekey]}"
+    end
     Attache.outbox.delete(env['HOSTNAME'], args[:relpath]) if env['HOSTNAME'].present?
   end
 
