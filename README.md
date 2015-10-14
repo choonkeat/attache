@@ -80,7 +80,11 @@ At boot time, `attache` server will first look at `VHOST` environment variable. 
 If you do not want to write down sensitive information like aws access key and secrets into a `config/vhost.yml` file, you can convert the entire content into `json` format and assign it to the `VHOST` environment variable instead.
 
 ```
-export VHOST=`ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'`
+# bash
+export VHOST="`ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'`"
+
+# heroku
+heroku config:set VHOST="`ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'`"
 ```
 
 #### Virtual Host Authorization
