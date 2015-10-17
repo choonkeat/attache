@@ -11,7 +11,6 @@ describe Attache::Upload do
   before do
     allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
     allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
-    allow(Attache.outbox).to receive(:write).and_return(1)
   end
 
   after do
@@ -19,7 +18,7 @@ describe Attache::Upload do
   end
 
   it "should passthrough irrelevant request" do
-    code, headers, body = middleware.call Rack::MockRequest.env_for('http://' + hostname, "HTTP_HOST" => hostname)
+    code, headers, body = middleware.call Rack::MockRequest.env_for('http://example.com', "HTTP_HOST" => hostname)
     expect(code).to eq 200
   end
 
@@ -68,40 +67,19 @@ describe Attache::Upload do
         expect_any_instance_of(Attache::VHost).not_to receive(:async)
         subject.call
       end
-
-      it 'should NOT save file in pending upload' do
-        expect(Attache.outbox).not_to receive(:write)
-        subject.call
-      end
     end
 
     context 'storage configured' do
       before do
         allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
         allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
-        allow_any_instance_of(Attache::VHost).to receive(:storage_create).and_return(nil)
       end
 
       it 'should save file remotely' do
-        expect_any_instance_of(Attache::VHost).to receive(:async).with(:storage_create, any_args)
-        subject.call
-      end
-
-      it 'should save file in pending upload' do
-        expect(Attache.outbox).to receive(:write).with(hostname, *any_args)
-        subject.call
-      end
-
-      context 'save outbox failed' do
-        before do
-          allow(Attache.outbox).to receive(:write).and_return(0)
+        expect_any_instance_of(Attache::VHost).to receive(:async) do |instance, method, path|
+          expect(method).to eq(:storage_create)
         end
-
-        it 'should respond with error' do
-          code, headers, body = subject.call
-          expect(code).to eq(500)
-          expect(headers['X-Exception']).to eq('Outbox file failed')
-        end
+        subject.call
       end
     end
 
