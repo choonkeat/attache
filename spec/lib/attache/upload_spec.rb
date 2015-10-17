@@ -18,7 +18,7 @@ describe Attache::Upload do
   end
 
   it "should passthrough irrelevant request" do
-    code, headers, body = middleware.call Rack::MockRequest.env_for('http://example.com', "HTTP_HOST" => hostname)
+    code, headers, body = middleware.call Rack::MockRequest.env_for('http://' + hostname, "HTTP_HOST" => hostname)
     expect(code).to eq 200
   end
 
