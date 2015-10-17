@@ -64,7 +64,7 @@ describe Attache::Upload do
       end
 
       it 'should NOT save file remotely' do
-        expect_any_instance_of(Attache::VHost).not_to receive(:async)
+        expect_any_instance_of(Attache::VHost).not_to receive(:storage_create)
         subject.call
       end
     end
@@ -76,9 +76,7 @@ describe Attache::Upload do
       end
 
       it 'should save file remotely' do
-        expect_any_instance_of(Attache::VHost).to receive(:async) do |instance, method, path|
-          expect(method).to eq(:storage_create)
-        end
+        expect_any_instance_of(Attache::VHost).to receive(:storage_create).and_return(anything)
         subject.call
       end
     end
