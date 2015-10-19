@@ -3,7 +3,6 @@ module Attache
     attr_accessor :localdir,
                   :vhost,
                   :cache,
-                  :outbox,
                   :logger
   end
 end
@@ -20,6 +19,3 @@ Attache.cache      = DiskStore.new(Attache.localdir, {
   reaper_interval:   ENV.fetch('CACHE_EVICTION_INTERVAL_SECONDS') { 60 }.to_i,
   eviction_strategy: (Attache.vhost.empty? ? nil : :LRU), # lru eviction only when there is remote storage
 })
-
-require './lib/attache/outbox.rb'
-Attache.outbox     = Attache::Outbox.new

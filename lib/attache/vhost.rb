@@ -61,7 +61,6 @@ class Attache::VHost
       })
       Attache.logger.info "[JOB] uploaded #{args[:cachekey]}"
     end
-    Attache.outbox.delete(env['HOSTNAME'], args[:relpath]) if env['HOSTNAME'].present?
   end
 
   def storage_destroy(args)
