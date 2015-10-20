@@ -8,12 +8,7 @@ class Attache::Delete < Attache::Base
     when '/delete'
       request  = Rack::Request.new(env)
       params   = request.params
-
-      if config.secret_key
-        unless config.hmac_valid?(params)
-          return [401, config.headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
-        end
-      end
+      return config.unauthorized unless config.authorized?(params)
 
       params['paths'].to_s.split("\n").each do |relpath|
         Attache.logger.info "DELETING local #{relpath}"

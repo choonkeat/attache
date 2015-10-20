@@ -8,6 +8,7 @@ class Attache::Tus::Upload < Attache::Base
     when '/tus/files'
       tus = ::Attache::Tus.new(env, config)
       params = params_of(env) # avoid unnecessary `invalid byte sequence in UTF-8` on `request.params`
+      return config.unauthorized unless config.authorized?(params)
 
       case env['REQUEST_METHOD']
       when 'POST'

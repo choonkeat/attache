@@ -6,16 +6,11 @@ class Attache::Upload < Attache::Base
   def _call(env, config)
     case env['PATH_INFO']
     when '/upload'
-      request  = Rack::Request.new(env)
-      params   = request.params
-
       case env['REQUEST_METHOD']
       when 'POST', 'PUT', 'PATCH'
-        if config.secret_key
-          unless config.hmac_valid?(params)
-            return [401, config.headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
-          end
-        end
+        request  = Rack::Request.new(env)
+        params   = request.params
+        return config.unauthorized unless config.authorized?(params)
 
         relpath = generate_relpath(Attache::Upload.sanitize params['file'])
         cachekey = File.join(request_hostname(env), relpath)
