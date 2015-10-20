@@ -34,6 +34,7 @@ class Attache::Tus::Upload < Attache::Base
            current_offset(cachekey) >= http_offset.to_i
 
           append_to(cachekey, http_offset, env['rack.input'])
+          config.storage_create(relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
 
           [200,
             tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey)),
@@ -75,6 +76,8 @@ class Attache::Tus::Upload < Attache::Base
 
     def current_offset(cachekey)
       filesize_of path_of(cachekey)
+    rescue Exception
+      Attache.cache.write(cachekey, StringIO.new)
     end
 
     def append_to(cachekey, offset, io)
