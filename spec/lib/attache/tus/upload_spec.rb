@@ -122,5 +122,13 @@ describe Attache::Tus::Upload do
         })
       end
     end
+
+    context "tus get" do
+      it "must redirec to attache download url for original geometry" do
+        code, headers, body = make_request_to(resume_path, method: 'GET')
+        expect(code).to eq(302)
+        expect(File.basename headers['Location']).to eq(CGI.escape(Attache::Upload.sanitize filename))
+      end
+    end
   end
 end

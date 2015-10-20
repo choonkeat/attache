@@ -59,7 +59,7 @@ class Attache::Tus::Upload < Attache::Base
         relpath = params['relpath']
         uri = URI.parse(Rack::Request.new(env).url)
         uri.query = nil
-        uri.path = File.join('/view', File.dirname(relpath), 'original', File.basename(relpath))
+        uri.path = File.join('/view', File.dirname(relpath), 'original', CGI.escape(File.basename(relpath)))
         [302, tus.headers_with_cors('Location' => uri.to_s), []]
       end
     else
