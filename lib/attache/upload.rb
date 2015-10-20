@@ -27,14 +27,7 @@ class Attache::Upload < Attache::Base
 
         config.storage_create(relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
 
-        file = Attache.cache.read(cachekey)
-        file.close unless file.closed?
-        [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [{
-          path:         relpath,
-          content_type: content_type_of(file.path),
-          geometry:     geometry_of(file.path),
-          bytes:        filesize_of(file.path),
-        }.to_json]]
+        [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [json_of(relpath, cachekey)]]
       when 'OPTIONS'
         [200, config.headers_with_cors, []]
       else
@@ -53,10 +46,4 @@ class Attache::Upload < Attache::Base
   def self.sanitize(filename)
     filename.to_s.gsub(/\%/, '_')
   end
-
-  private
-
-    def generate_relpath(basename)
-      File.join(*SecureRandom.hex.scan(/\w\w/), basename)
-    end
 end

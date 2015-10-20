@@ -83,8 +83,4 @@ class Attache::Download < Attache::Base
       end
     end
 
-    def rack_response_body_for(file)
-      Attache::FileResponseBody.new(file)
-    end
-
 end
