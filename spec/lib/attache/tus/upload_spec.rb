@@ -50,14 +50,14 @@ describe Attache::Tus::Upload do
 
   context "with uploaded file" do
     let(:relpath)  { CGI.unescape @location.match(/relpath=([^&]+)/)[1] }
-    let(:cacheykey) { File.join(hostname, relpath) }
+    let(:cachekey) { File.join(hostname, relpath) }
     let(:current_offset) { 3 + rand(10) }
 
     before do
       code, headers, body = make_request_to(create_path, method: 'POST', input: file, 'HTTP_ENTITY_LENGTH' => filesize)
       expect(code).to eq(201)
       @location = URI.parse(headers['Location']).request_uri
-      open(middleware.path_of(cacheykey), "a") {|f| f.write('a' * current_offset) }
+      open(middleware.path_of(cachekey), "a") {|f| f.write('a' * current_offset) }
     end
 
     context "tus patch" do
@@ -102,7 +102,7 @@ describe Attache::Tus::Upload do
         expect {
           make_request_to(resume_path, method: 'PATCH', input: file, "HTTP_OFFSET" => current_offset, "HTTP_CONTENT_LENGTH" => filesize, "CONTENT_TYPE" => "application/offset+octet-stream", "HTTP_TUS_RESUMABLE" => "1.0.0")
         }.to change {
-          middleware.send(:current_offset, cacheykey)
+          middleware.send(:current_offset, cachekey, relpath, config = {})
         }.by(filesize)
       end
     end

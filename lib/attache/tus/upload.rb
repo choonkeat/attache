@@ -31,13 +31,13 @@ class Attache::Tus::Upload < Attache::Base
            positive_number?(http_offset) &&
            (env['CONTENT_TYPE'] == 'application/offset+octet-stream') &&
            tus.resumable_version.to_s == '1.0.0' &&
-           current_offset(cachekey) >= http_offset.to_i
+           current_offset(cachekey, relpath, config) >= http_offset.to_i
 
           append_to(cachekey, http_offset, env['rack.input'])
           config.storage_create(relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
 
           [200,
-            tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey)),
+            tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey, relpath, config)),
             [json_of(relpath, cachekey)],
           ]
         else
@@ -51,7 +51,7 @@ class Attache::Tus::Upload < Attache::Base
         relpath = params['relpath']
         cachekey = File.join(request_hostname(env), relpath)
         [200,
-          tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey)),
+          tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey, relpath, config)),
           [json_of(relpath, cachekey)],
         ]
 
@@ -74,10 +74,15 @@ class Attache::Tus::Upload < Attache::Base
 
   private
 
-    def current_offset(cachekey)
-      filesize_of path_of(cachekey)
-    rescue Exception
+    def current_offset(cachekey, relpath, config)
+      file = Attache.cache.fetch(cachekey) do
+        config.storage_get(relpath: relpath) if config.storage && config.bucket
+      end
+      file.size
+    rescue
       Attache.cache.write(cachekey, StringIO.new)
+    ensure
+      file.tap(&:close)
     end
 
     def append_to(cachekey, offset, io)
