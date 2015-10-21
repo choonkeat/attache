@@ -6,16 +6,11 @@ class Attache::Upload < Attache::Base
   def _call(env, config)
     case env['PATH_INFO']
     when '/upload'
-      request  = Rack::Request.new(env)
-      params   = request.params
-
       case env['REQUEST_METHOD']
       when 'POST', 'PUT', 'PATCH'
-        if config.secret_key
-          unless config.hmac_valid?(params)
-            return [401, config.headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
-          end
-        end
+        request  = Rack::Request.new(env)
+        params   = request.params
+        return config.unauthorized unless config.authorized?(params)
 
         relpath = generate_relpath(Attache::Upload.sanitize params['file'])
         cachekey = File.join(request_hostname(env), relpath)
@@ -27,14 +22,7 @@ class Attache::Upload < Attache::Base
 
         config.storage_create(relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
 
-        file = Attache.cache.read(cachekey)
-        file.close unless file.closed?
-        [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [{
-          path:         relpath,
-          content_type: content_type_of(file.path),
-          geometry:     geometry_of(file.path),
-          bytes:        filesize_of(file.path),
-        }.to_json]]
+        [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [json_of(relpath, cachekey)]]
       when 'OPTIONS'
         [200, config.headers_with_cors, []]
       else
@@ -53,10 +41,4 @@ class Attache::Upload < Attache::Base
   def self.sanitize(filename)
     filename.to_s.gsub(/\%/, '_')
   end
-
-  private
-
-    def generate_relpath(basename)
-      File.join(*SecureRandom.hex.scan(/\w\w/), basename)
-    end
 end

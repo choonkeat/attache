@@ -78,4 +78,12 @@ class Attache::VHost
   def async(method, args)
     ::Attache::Job.perform_async(method, env, args)
   end
+
+  def authorized?(params)
+    secret_key.blank? || hmac_valid?(params)
+  end
+
+  def unauthorized
+    [401, headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
+  end
 end

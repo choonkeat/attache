@@ -30,4 +30,34 @@ class Attache::Base
   def filesize_of(fullpath)
     File.stat(fullpath).size
   end
+
+  def params_of(env)
+    env['QUERY_STRING'].to_s.split('&').inject({}) do |sum, pair|
+      k, v = pair.split('=').collect {|s| CGI.unescape(s) }
+      sum.merge(k => v)
+    end
+  end
+
+  def path_of(cachekey)
+    Attache.cache.send(:key_file_path, cachekey)
+  end
+
+  def rack_response_body_for(file)
+    Attache::FileResponseBody.new(file)
+  end
+
+  def generate_relpath(basename)
+    File.join(*SecureRandom.hex.scan(/\w\w/), basename)
+  end
+
+  def json_of(relpath, cachekey)
+    filepath = path_of(cachekey)
+    {
+      path:         relpath,
+      content_type: content_type_of(filepath),
+      geometry:     geometry_of(filepath),
+      bytes:        filesize_of(filepath),
+    }.to_json
+  end
+
 end
