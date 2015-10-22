@@ -1,4 +1,4 @@
-require './boot.rb'
+require 'attache/boot'
 
 use Attache::Delete
 use Attache::Upload

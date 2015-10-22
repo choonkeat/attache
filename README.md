@@ -2,11 +2,82 @@
 
 [![Build Status](https://travis-ci.org/choonkeat/attache.svg?branch=master)](https://travis-ci.org/choonkeat/attache)
 
+## Run
+
+### Heroku
+
+You can run your own instance on your own Heroku server
+
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+
+### Source code
+
+You can checkout the source code and run it like a regular [a Procfile-based app](ddollar.github.io/foreman/)
+
+```
+git clone https://github.com/choonkeat/attache.git
+cd attache
+foreman start -c web=1 -p 9292
+```
+
+See [foreman](https://github.com/ddollar/foreman) for more details.
+
+### RubyGem
+
+You can install the gem and then execute `attache` command
+
+```
+gem install attache
+attache start -c web=1 -p 9292
+```
+
+NOTE: some config files will be written into your current directory
+
+```
+.
+├── Procfile
+├── config
+│   ├── puma.rb
+│   └── vhost.yml
+└── config.ru
+```
+
+### Bundler
+
+You can also use bundler to manage the gem; add this into your `Gemfile`
+
+```
+gem 'attache'
+```
+
+then execute
+
+```
+bundle install
+bundle exec attache start -c web=1 -p 9292
+```
+
+NOTE: some config files will be written into your current directory
+
+```
+.
+├── Gemfile
+├── Gemfile.lock
+├── Procfile
+├── config
+│   ├── puma.rb
+│   └── vhost.yml
+└── config.ru
+```
+
+## APIs
+
+These are the standard endpoints provided by an `attache` server.
+
+### Upload
 
 Users will upload files directly into the `attache` server from their browser, bypassing the main app.
 
-### Upload
 
 > ```
 > PUT /upload?file=image123.jpg
@@ -104,22 +175,6 @@ hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + e
 ```
 
 This will be transparent to you when using integration libraries like [attache_rails gem](https://github.com/choonkeat/attache_rails).
-
-## Run
-
-`attache` is [a Procfile-based app](ddollar.github.io/foreman/), to run
-
-```
-foreman start -p 9292
-```
-
-See [foreman](https://github.com/ddollar/foreman) for more details.
-
-## Todo
-
-Instead of an error, we should "resize" non-image files too. The response should just be a visual representation (image) of the file that was uploaded. i.e. if the file `pdf`, it is reasonable to respond with a `pdf` icon (or it's cover page) as an image.
-
-NOTE: `pdf` thumbnail was implemented in https://github.com/choonkeat/attache/pull/2
 
 ## License
 

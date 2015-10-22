@@ -1,0 +1,54 @@
+#!/bin/env ruby
+
+require 'fileutils'
+
+# attache config
+if ENV['VHOST']
+  puts "Using VHOST env"
+elsif File.exists?("config/vhost.yml")
+  puts "Using config/vhost.yml"
+else
+  FileUtils.mkdir_p 'config'
+  FileUtils.copy File.expand_path("../config/vhost.example.yml", File.dirname(__FILE__)), 'config/vhost.yml'
+  puts "Initialized config/vhost.yml"
+end
+
+# puma config
+if File.exists?("config/puma.rb")
+  puts "Using config/puma.rb"
+else
+  FileUtils.mkdir_p 'config'
+  FileUtils.copy File.expand_path("../config/puma.rb", File.dirname(__FILE__)), 'config/puma.rb'
+  puts "Initialized config/puma.rb"
+end
+
+# procfile
+if File.exists?("Procfile")
+  puts "Using Procfile"
+else
+  open("Procfile", "w") do |f|
+    f.write <<-EOM.gsub(/^\s+/, '')
+      web: bundle exec puma -C config/puma.rb
+      worker: bundle exec sidekiq -e production -q attache_vhost_jobs -r #{File.expand_path("../lib/attache/boot.rb", File.dirname(__FILE__))}
+    EOM
+  end
+  puts "Initialized Procfile"
+end
+
+# rack config
+if File.exists?("config.ru")
+  puts "Using config.ru"
+else
+  FileUtils.copy File.expand_path("../config.ru", File.dirname(__FILE__)), 'config.ru'
+  puts "Initialized config.ru"
+end
+
+case ARGV.first
+when 'start'
+  require "foreman/cli"
+  Foreman::CLI.start
+else
+  puts ""
+  puts "Setup complete: run `foreman start` to begin"
+  puts ""
+end
