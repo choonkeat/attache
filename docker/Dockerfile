@@ -1,7 +1,7 @@
 FROM ruby:2.2
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y imagemagick
-RUN gem install attache --version '>= 1.0.1'
+RUN gem install attache --version '>= 1.0.2'
 
 RUN useradd -d /app -m app
 USER app
