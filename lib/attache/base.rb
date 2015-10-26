@@ -8,7 +8,7 @@ class Attache::Base
   end
 
   def vhost_for(host)
-    Attache::VHost.new(Attache.vhost[host])
+    Attache::VHost.new(Attache.vhost[host] || Attache.vhost['0.0.0.0'])
   end
 
   def request_hostname(env)

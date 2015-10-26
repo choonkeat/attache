@@ -23,3 +23,7 @@
 
 # This section will only take effect if a request is made to `localhost:9292`
 "localhost:9292":
+
+
+# This section will apply if a request did not match anything else
+"0.0.0.0":
