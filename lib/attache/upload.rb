@@ -18,6 +18,8 @@ class Attache::Upload < Attache::Base
         bytes_wrote = Attache.cache.write(cachekey, request.body)
         if bytes_wrote == 0
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
+        else
+          Attache.logger.info "[Upload] received #{bytes_wrote} #{cachekey}"
         end
 
         config.storage_create(relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
