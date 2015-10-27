@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
 
   s.files       = Dir["{app,lib}/**/*", "MIT-LICENSE", "Rakefile", "README.md", 'exe/**/*',
-                      "config/vhost.example.yml", "config/puma.rb", "config.ru"]
+                      "config/vhost.example.yml", "config/puma.rb", "config.ru", 'public/**/*']
   s.bindir      = 'exe'
   s.executables = ['attache']
 

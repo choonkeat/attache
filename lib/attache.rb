@@ -27,7 +27,8 @@ module Attache
     attr_accessor :localdir,
                   :vhost,
                   :cache,
-                  :logger
+                  :logger,
+                  :publicdir
   end
 end
 
