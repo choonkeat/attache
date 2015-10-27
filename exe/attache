@@ -29,7 +29,7 @@ else
   open("Procfile", "w") do |f|
     f.write <<-EOM.gsub(/^\s+/, '')
       web: bundle exec puma -C config/puma.rb
-      worker: bundle exec sidekiq -e production -q attache_vhost_jobs -r #{File.expand_path("../lib/attache/boot.rb", File.dirname(__FILE__))}
+      worker: bundle exec sidekiq -e production -q attache_vhost_jobs -r #{File.expand_path("../lib/attache.rb", File.dirname(__FILE__))}
     EOM
   end
   puts "Initialized Procfile"

@@ -1,4 +1,4 @@
-require 'attache/boot'
+require 'attache'
 
 use Attache::Delete
 use Attache::Upload
