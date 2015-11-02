@@ -10,6 +10,14 @@ You can run your own instance on your own Heroku server
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
+### Docker
+
+```
+docker run -it -p 9292:5000 --rm attache/attache
+```
+
+Also, see [deploying attache on digital ocean in 5 minutes](https://github.com/choonkeat/attache/wiki/Deploying-Attache-on-Digital-Ocean)
+
 ### Source code
 
 You can checkout the source code and run it like a regular [a Procfile-based app](ddollar.github.io/foreman/)
