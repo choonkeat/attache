@@ -65,22 +65,11 @@ bundle install
 bundle exec attache start -c web=1 -p 9292
 ```
 
-NOTE: some config files will be written into your current directory
-
-```
-.
-├── Gemfile
-├── Gemfile.lock
-├── Procfile
-├── config
-│   ├── puma.rb
-│   └── vhost.yml
-└── config.ru
-```
+NOTE: some config files will be written into your current directory (see RubyGems above)
 
 ## APIs
 
-These are the standard endpoints provided by an `attache` server.
+The attache server is a reference implementation of these interfaces. If you write your own server, [compatibility can be verified by running a test suite](https://github.com/choonkeat/attache_api#testing-against-an-attache-compatible-server).
 
 ### Upload
 
