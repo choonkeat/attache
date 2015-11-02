@@ -4,13 +4,13 @@
 
 ## Run
 
-### Heroku
+#### Heroku
 
 You can run your own instance on your own Heroku server
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
-### Docker
+#### Docker
 
 ```
 docker run -it -p 9292:5000 --rm attache/attache
@@ -18,7 +18,7 @@ docker run -it -p 9292:5000 --rm attache/attache
 
 Also, see [deploying attache on digital ocean in 5 minutes](https://github.com/choonkeat/attache/wiki/Deploying-Attache-on-Digital-Ocean)
 
-### Source code
+#### Source code
 
 You can checkout the source code and run it like a regular [a Procfile-based app](ddollar.github.io/foreman/)
 
@@ -30,7 +30,7 @@ foreman start -c web=1 -p 9292
 
 See [foreman](https://github.com/ddollar/foreman) for more details.
 
-### RubyGem
+#### RubyGem
 
 You can install the gem and then execute `attache` command
 
@@ -50,7 +50,7 @@ NOTE: some config files will be written into your current directory
 └── config.ru
 ```
 
-### Bundler
+#### Bundler
 
 You can also use bundler to manage the gem; add this into your `Gemfile`
 
@@ -67,77 +67,21 @@ bundle exec attache start -c web=1 -p 9292
 
 NOTE: some config files will be written into your current directory (see RubyGems above)
 
-## APIs
-
-The attache server is a reference implementation of these interfaces. If you write your own server, [compatibility can be verified by running a test suite](https://github.com/choonkeat/attache_api#testing-against-an-attache-compatible-server).
-
-### Upload
-
-Users will upload files directly into the `attache` server from their browser, bypassing the main app.
-
-
-> ```
-> PUT /upload?file=image123.jpg
-> ```
-> file content is the http request body
-
-The main app front end will receive a unique `path` for each uploaded file - the only information to store in the main app database.
-
-> ```
-> {"path":"pre/fix/image123.jpg","content_type":"image/jpeg","geometry":"1920x1080"}
-> ```
-> json response from attache after upload.
-
-### Download
-
-Whenever the main app wants to display the uploaded file, constrained to a particular size, it will use a helper method provided by the `attache` lib. e.g. `embed_attache(path)` which will generate the necessary, barebones markup.
-
-> ```
-> <img src="https://example.com/view/pre/fix/100x100/image123.jpg" />
-> ```
-> use [the imagemagick resize syntax](http://www.imagemagick.org/Usage/resize/) to specify the desired output.
->
-> make sure to `escape` the geometry string.
-> e.g. for a hard crop of `50x50#`, the url should be `50x50%23`
->
-> ```
-> <img src="https://example.com/view/pre/fix/50x50%23/image123.jpg" />
-> ```
-> requesting for a geometry of `original` will return the uploaded file. this works well for non-image file uploads.
-> requesting for a geometry of `remote` will skip the local cache and serve from cloud storage.
-
-* Attache keeps the uploaded file in the local harddisk (a temp directory)
-* Attache will also upload the file into cloud storage if `FOG_CONFIG` is set
-* If the local file does not exist for some reason (e.g. cleared cache), it will download from cloud storage and store it locally
-* When a specific size is requested, it will generate the resized file based on the local file and serve it in the http response
-* If cloud storage is defined, local disk cache will store up to a maximum of `CACHE_SIZE_BYTES` bytes. By default `CACHE_SIZE_BYTES` will 80% of available diskspace
-
-### Delete
-
-> ```
-> DELETE /delete
-> paths=image1.jpg%0Aprefix2%2Fimage2.jpg%0Aimage3.jpg
-> ```
-
-Removing 1 or more files from the local cache and remote storage can be done via a http `POST` or `DELETE` request to `/delete`, with a `paths` parameter in the request body.
-
-The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for deletion: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`.
-
 ## Configure
 
 `LOCAL_DIR` is where your local disk cache will be. By default, attache will use a system assigned temporary directory which may not be the same everytime you run attache.
 
 `CACHE_SIZE_BYTES` determines how much disk space will be used for the local disk cache. If the size of cache exceeds, least recently used files will be evicted after `CACHE_EVICTION_INTERVAL_SECONDS` duration.
 
-### Asynchronous upload (and delete)
+#### Asynchronous delete
 
-By default `attache` will upload to cloud storage using the lightweight, async processing library [sucker_punch](https://github.com/brandonhilkert/sucker_punch). This requires no additional setup (read: 1x free dyno).
+By default `attache` will delete files from cloud storage using the lightweight, async processing library [sucker_punch](https://github.com/brandonhilkert/sucker_punch). This requires no additional setup (read: 1x free dyno).
 
 However if you prefer a more durable queue for reliable uploads, configuring `REDIS_PROVIDER` or `REDIS_URL` will switch `attache` to use a `redis` queue instead, via `sidekiq`. [Read Sidekiq's documentation](https://github.com/mperham/sidekiq/wiki/Using-Redis#using-an-env-variable) for details on these variables.
 
-If for some weird reason you'd want the upload to cloud storage to be synchronous, set `INLINE_UPLOAD=1` instead.
+If for some reason you'd want the cloud storage delete to be synchronous, set `INLINE_UPLOAD=1` instead.
 
-### Cloud Storage Virtual Host
+#### Cloud Storage Virtual Host
 
 `attache` uses a different config (and backup files into a different cloud service) depending on the request hostname that it was accessed by.
 
@@ -172,6 +116,62 @@ hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + e
 ```
 
 This will be transparent to you when using integration libraries like [attache_rails gem](https://github.com/choonkeat/attache_rails).
+
+## APIs
+
+The attache server is a reference implementation of these interfaces. If you write your own server, [compatibility can be verified by running a test suite](https://github.com/choonkeat/attache_api#testing-against-an-attache-compatible-server).
+
+#### Upload
+
+Users will upload files directly into the `attache` server from their browser, bypassing the main app.
+
+
+> ```
+> PUT /upload?file=image123.jpg
+> ```
+> file content is the http request body
+
+The main app front end will receive a unique `path` for each uploaded file - the only information to store in the main app database.
+
+> ```
+> {"path":"pre/fix/image123.jpg","content_type":"image/jpeg","geometry":"1920x1080"}
+> ```
+> json response from attache after upload.
+
+#### Download
+
+Whenever the main app wants to display the uploaded file, constrained to a particular size, it will use a helper method provided by the `attache` lib. e.g. `embed_attache(path)` which will generate the necessary, barebones markup.
+
+> ```
+> <img src="https://example.com/view/pre/fix/100x100/image123.jpg" />
+> ```
+> use [the imagemagick resize syntax](http://www.imagemagick.org/Usage/resize/) to specify the desired output.
+>
+> make sure to `escape` the geometry string.
+> e.g. for a hard crop of `50x50#`, the url should be `50x50%23`
+>
+> ```
+> <img src="https://example.com/view/pre/fix/50x50%23/image123.jpg" />
+> ```
+> requesting for a geometry of `original` will return the uploaded file. this works well for non-image file uploads.
+> requesting for a geometry of `remote` will skip the local cache and serve from cloud storage.
+
+* Attache keeps the uploaded file in the local harddisk (a temp directory)
+* Attache will also upload the file into cloud storage if `FOG_CONFIG` is set
+* If the local file does not exist for some reason (e.g. cleared cache), it will download from cloud storage and store it locally
+* When a specific size is requested, it will generate the resized file based on the local file and serve it in the http response
+* If cloud storage is defined, local disk cache will store up to a maximum of `CACHE_SIZE_BYTES` bytes. By default `CACHE_SIZE_BYTES` will 80% of available diskspace
+
+#### Delete
+
+> ```
+> DELETE /delete
+> paths=image1.jpg%0Aprefix2%2Fimage2.jpg%0Aimage3.jpg
+> ```
+
+Removing 1 or more files from the local cache and remote storage can be done via a http `POST` or `DELETE` request to `/delete`, with a `paths` parameter in the request body.
+
+The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for deletion: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`.
 
 ## License
 
