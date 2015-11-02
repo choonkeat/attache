@@ -6,7 +6,7 @@ RUN useradd -d /app -m app
 RUN chown -R app /usr/local/bundle
 USER app
 
-RUN gem install attache --version '>= 1.0.3'
+RUN gem install attache --version '>= 1.0.4'
 RUN mkdir -p /app/src
 WORKDIR /app/src
 RUN echo 'gem "attache"' > Gemfile && bundle

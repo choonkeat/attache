@@ -79,7 +79,7 @@ By default `attache` will delete files from cloud storage using the lightweight,
 
 However if you prefer a more durable queue for reliable uploads, configuring `REDIS_PROVIDER` or `REDIS_URL` will switch `attache` to use a `redis` queue instead, via `sidekiq`. [Read Sidekiq's documentation](https://github.com/mperham/sidekiq/wiki/Using-Redis#using-an-env-variable) for details on these variables.
 
-If for some reason you'd want the cloud storage delete to be synchronous, set `INLINE_UPLOAD=1` instead.
+If for some reason you'd want the cloud storage delete to be synchronous, set `INLINE_JOB=1` instead.
 
 #### Cloud Storage Virtual Host
 

@@ -16,7 +16,7 @@ require 'fog'
 
 if ENV['REDIS_PROVIDER'] || ENV['REDIS_URL']
   # default sidekiq
-elsif ENV['INLINE_UPLOAD']
+elsif ENV['INLINE_JOB']
   require 'sidekiq/testing/inline'
 else
   require 'sucker_punch'
