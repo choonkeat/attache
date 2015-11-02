@@ -6,10 +6,10 @@ RUN useradd -d /app -m app
 RUN chown -R app /usr/local/bundle
 USER app
 
-RUN gem install attache --version '>= 1.0.4'
+RUN gem install --no-ri --no-rdoc attache --version '>= 1.0.4'
 RUN mkdir -p /app/src
 WORKDIR /app/src
 RUN echo 'gem "attache"' > Gemfile && bundle
 
 EXPOSE 5000
-CMD ["/usr/local/bundle/bin/attache", "start", "-c", "web=1"]
+CMD ["attache", "start", "-c", "web=1"]
