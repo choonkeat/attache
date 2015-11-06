@@ -35,6 +35,18 @@ else
   puts "Initialized Procfile"
 end
 
+# rakefile
+if File.exists?("Rakefile")
+  puts "Using Rakefile"
+else
+  open("Rakefile", "w") do |f|
+    f.write <<-EOM.gsub(/^\s+/, '')
+      require 'attache/tasks'
+    EOM
+  end
+  puts "Initialized Rakefile"
+end
+
 # rack config
 if File.exists?("config.ru")
   puts "Using config.ru"

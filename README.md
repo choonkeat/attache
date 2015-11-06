@@ -93,10 +93,10 @@ If you do not want to write down sensitive information like aws access key and s
 
 ```
 # bash
-export VHOST="`ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'`"
+export VHOST=$(bundle exec rake attache:vhost)
 
 # heroku
-heroku config:set VHOST="`ruby -ryaml -rjson -e 'puts YAML.load(IO.read("config/vhost.yml")).to_json'`"
+heroku config:set VHOST=$(bundle exec rake attache:vhost)
 ```
 
 #### Virtual Host Authorization
