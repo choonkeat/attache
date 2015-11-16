@@ -22,6 +22,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'rack', '~> 1.6'
   s.add_runtime_dependency 'paperclip', '~> 4.3'
   s.add_runtime_dependency 'puma', '~> 2.14'
+  s.add_runtime_dependency 'net-ssh'
   s.add_runtime_dependency 'fog', '~> 1.34'
   s.add_runtime_dependency 'excon', '~> 0.45'
   s.add_runtime_dependency 'sys-filesystem', '~> 0'
