@@ -4,7 +4,21 @@ class Attache::ResizeJob
   def perform(closed_file, target_geometry_string, extension)
     t = Time.now
     Attache.logger.info "[POOL] start"
-    thumbnail = thumbnail_for(closed_file: closed_file, target_geometry_string: target_geometry_string, extension: extension)
+
+    thumbnail = nil
+    if /=/ =~ target_geometry_string
+      target_geometry_string.split(';').each do |geo|
+        thumbnail = thumbnail ? thumbnail.make.tap(&:close) : closed_file
+        thumbnail = thumbnail_for(closed_file: thumbnail,
+                                  target_geometry_string: geo,
+                                  extension: extension)
+      end
+    else
+      thumbnail = thumbnail_for(closed_file: closed_file,
+                                target_geometry_string: target_geometry_string,
+                                extension: extension)
+    end
+
     thumbnail.instance_variable_set('@basename', thumbnail.instance_variable_get('@basename').gsub(/[^\w\.]/, '_'))
     thumbnail.make.tap do
       Attache.logger.info "[POOL] done in #{Time.now - t}s"
@@ -16,6 +30,17 @@ class Attache::ResizeJob
   private
 
     def thumbnail_for(closed_file:, target_geometry_string:, extension:, max: 2048)
+      if target_geometry_string =~ /=/
+        command, geo = target_geometry_string.split '='
+
+        case command
+          when 'resize'
+            return Paperclip::Thumbnail.new(closed_file, geometry: geo, format: extension)
+          when 'crop'
+            return Paperclip::Thumbnail.new(closed_file, geometry: '100%', convert_options: "-crop #{geo}", format: extension)
+        end
+      end
+
       thumbnail = Paperclip::Thumbnail.new(closed_file, geometry: target_geometry_string, format: extension)
       current_geometry = current_geometry_for(thumbnail)
       target_geometry = Paperclip::GeometryParser.new(target_geometry_string).make
