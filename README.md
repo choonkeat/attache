@@ -155,6 +155,17 @@ Whenever the main app wants to display the uploaded file, constrained to a parti
 > ```
 > requesting for a geometry of `original` will return the uploaded file. this works well for non-image file uploads.
 > requesting for a geometry of `remote` will skip the local cache and serve from cloud storage.
+>
+> *Sequenced Operation*
+> Sequenced operation for `crop` and `resize` is supported. For example, to
+> crop image starting from point (100,200), with area size (50x60), and then
+> resize it to (80x80), one can put `crop=50x60+100+200;resize=80x80` as the 
+> command. After HTML Encode, it would be:
+> `crop%3D50x60%2B100%2B200%3Bresize%3D80x80`. To use it as image:
+>
+> ```
+> <img src="https://example.com/view/pre/fix/crop%3D50x60%2B100%2B200%3Bresize%3D80x80/image123.jpg" />
+> ```
 
 * Attache keeps the uploaded file in the local harddisk (a temp directory)
 * Attache will also upload the file into cloud storage if `FOG_CONFIG` is set
