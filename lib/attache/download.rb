@@ -1,7 +1,6 @@
 require 'connection_pool'
 
 class Attache::Download < Attache::Base
-  REMOTE_GEOMETRY = ENV.fetch('REMOTE_GEOMETRY') { 'remote' }
   OUTPUT_EXTENSIONS = %w[png jpg jpeg gif]
   RESIZE_JOB_POOL = ConnectionPool.new(JSON.parse(ENV.fetch('RESIZE_POOL') { '{ "size": 2, "timeout": 60 }' }).symbolize_keys) { Attache::ResizeJob.new }
 
@@ -12,10 +11,14 @@ class Attache::Download < Attache::Base
   def _call(env, config)
     case env['PATH_INFO']
     when %r{\A/view/}
+      redirect_geometries = {}
+      redirect_geometries[ENV.fetch('REMOTE_GEOMETRY') { 'remote' }] = config.storage && config.bucket && config
+      redirect_geometries[ENV.fetch('BACKUP_GEOMETRY') { 'backup' }] = config.backup
+
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-        if geometry == REMOTE_GEOMETRY && config.storage && config.bucket
-          headers = config.download_headers.merge({
-                      'Location' => config.storage_url(relpath: relpath),
+        if vhost = redirect_geometries[geometry]
+          headers = vhost.download_headers.merge({
+                      'Location' => vhost.storage_url(relpath: relpath),
                       'Cache-Control' => 'private, no-cache',
                     })
           return [302, headers, []]
@@ -39,7 +42,8 @@ class Attache::Download < Attache::Base
           return [404, config.download_headers, []]
         end
 
-        thumbnail = if geometry == 'original' || geometry == REMOTE_GEOMETRY
+        thumbnail = case geometry
+        when 'original', *redirect_geometries.keys
           file
         else
           extension = basename.split(/\W+/).last
