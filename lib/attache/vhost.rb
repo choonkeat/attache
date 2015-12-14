@@ -1,6 +1,7 @@
 class Attache::VHost
   attr_accessor :remotedir,
                 :secret_key,
+                :backup,
                 :bucket,
                 :storage,
                 :download_headers,
@@ -14,6 +15,11 @@ class Attache::VHost
     if env['FOG_CONFIG']
       self.bucket       = env['FOG_CONFIG'].fetch('bucket')
       self.storage      = Fog::Storage.new(env['FOG_CONFIG'].except('bucket').symbolize_keys)
+
+      if env['BACKUP_CONFIG']
+        backup_fog = env['FOG_CONFIG'].merge(env['BACKUP_CONFIG'])
+        self.backup = Attache::VHost.new(env.except('BACKUP_CONFIG').merge('FOG_CONFIG' => backup_fog))
+      end
     end
     self.download_headers = {
       "Cache-Control" => "public, max-age=31536000"
@@ -85,5 +91,12 @@ class Attache::VHost
 
   def unauthorized
     [401, headers_with_cors.merge('X-Exception' => 'Authorization failed'), []]
+  end
+
+  def backup_file(args)
+    if backup
+      key = File.join(*remotedir, args[:relpath])
+      remote_api.copy_object(bucket, key, backup.bucket, key)
+    end
   end
 end

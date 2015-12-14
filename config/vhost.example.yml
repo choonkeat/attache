@@ -20,6 +20,9 @@
     "aws_secret_access_key": CHANGEME
     "bucket": CHANGEME
     "region": us-west-1
+  "BACKUP_CONFIG":
+    "bucket": CHANGEME_BAK
+    # only supports 1 key: `bucket`
 
 # This section will only take effect if a request is made to `localhost:9292`
 "localhost:9292":

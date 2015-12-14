@@ -2,6 +2,7 @@ require 'spec_helper'
 
 describe Attache::VHost do
   let(:config) { { 'REMOTE_DIR' => remotedir } }
+  let(:config_with_backup) { YAML.load_file('config/vhost.example.yml').fetch("aws.example.com").merge('REMOTE_DIR' => remotedir) }
   let(:vhost) { Attache::VHost.new(config) }
   let(:remote_api) { double(:remote_api) }
   let(:file_io) { StringIO.new("") }
@@ -25,6 +26,57 @@ describe Attache::VHost do
       expect(remote_api).not_to receive(:create)
 
       expect { vhost.storage_create(relpath: relpath, cachekey: cachekey) }.to raise_error
+    end
+  end
+
+  describe '#storage' do
+    it { expect(vhost.storage).to be_nil }
+
+    context 'configured' do
+      let(:config) { config_with_backup }
+
+      it { expect(vhost.storage).to be_kind_of(Fog::Storage::AWS::Real) }
+      it { expect(vhost.storage.region).to eq('us-west-1') }
+    end
+  end
+
+  describe '#bucket' do
+    it { expect(vhost.bucket).to be_nil }
+
+    context 'configured' do
+      let(:config) { config_with_backup }
+
+      it { expect(vhost.bucket).to eq("CHANGEME") }
+    end
+  end
+
+  describe '#backup' do
+    it { expect(vhost.backup).to be_nil }
+
+    describe '#backup_file' do
+      it 'should not do anything' do
+        expect(vhost.remote_api).not_to receive(:copy_object)
+        vhost.backup_file(relpath: relpath)
+      end
+    end
+
+    context 'configured' do
+      let(:config) { config_with_backup }
+
+      it { expect(vhost.backup).to be_kind_of(Attache::VHost) }
+      it { expect(vhost.backup.storage).to be_kind_of(Fog::Storage::AWS::Real) }
+      it { expect(vhost.backup.storage.region).to eq('us-west-1') }
+      it { expect(vhost.backup.bucket).to eq("CHANGEME_BAK") }
+
+      describe '#backup_file' do
+        it 'should not do anything' do
+          expect(vhost.remote_api).to receive(:copy_object).with(
+            vhost.bucket, "#{remotedir}/#{relpath}",
+            vhost.backup.bucket, "#{remotedir}/#{relpath}"
+          )
+          vhost.backup_file(relpath: relpath)
+        end
+      end
     end
   end
 end
