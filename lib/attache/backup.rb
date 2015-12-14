@@ -10,12 +10,11 @@ class Attache::Backup < Attache::Base
       params   = request.params
       return config.unauthorized unless config.authorized?(params)
 
-      params['paths'].to_s.split("\n").each do |relpath|
-        Attache.logger.info "CONFIRM local #{relpath}"
-        cachekey = File.join(request_hostname(env), relpath)
-        if config.storage && config.bucket
-          Attache.logger.info "CONFIRM remote #{relpath}"
-          config.async(:backup_file, relpath: relpath)
+      if config.storage && config.bucket
+        sync_method = (ENV['BACKUP_ASYNC'] ? :async : :send)
+        params['paths'].to_s.split("\n").each do |relpath|
+          Attache.logger.info "BACKUP remote #{relpath}"
+          config.send(sync_method, :backup_file, relpath: relpath)
         end
       end
       [200, config.headers_with_cors, []]

@@ -43,16 +43,14 @@ describe Attache::Backup do
       end
 
       it 'should backup file' do
-        expect_any_instance_of(Attache::VHost).to receive(:async) do |instance, method, path|
-          expect(method).to eq(:backup_file)
-        end.exactly(2).times
+        expect_any_instance_of(Attache::VHost).to receive(:backup_file).exactly(2).times
         subject.call
       end
     end
 
     context 'storage NOT configured' do
       it 'should backup file' do
-        expect_any_instance_of(Attache::VHost).not_to receive(:async)
+        expect_any_instance_of(Attache::VHost).not_to receive(:backup_file)
         subject.call
       end
     end
