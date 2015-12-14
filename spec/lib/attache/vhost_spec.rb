@@ -55,7 +55,7 @@ describe Attache::VHost do
 
     describe '#backup_file' do
       it 'should not do anything' do
-        expect(vhost.remote_api).not_to receive(:copy_object)
+        expect(vhost.storage).not_to receive(:copy_object)
         vhost.backup_file(relpath: relpath)
       end
     end
@@ -70,7 +70,7 @@ describe Attache::VHost do
 
       describe '#backup_file' do
         it 'should not do anything' do
-          expect(vhost.remote_api).to receive(:copy_object).with(
+          expect(vhost.storage).to receive(:copy_object).with(
             vhost.bucket, "#{remotedir}/#{relpath}",
             vhost.backup.bucket, "#{remotedir}/#{relpath}"
           )

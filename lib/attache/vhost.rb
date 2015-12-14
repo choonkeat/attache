@@ -96,7 +96,7 @@ class Attache::VHost
   def backup_file(args)
     if backup
       key = File.join(*remotedir, args[:relpath])
-      remote_api.copy_object(bucket, key, backup.bucket, key)
+      storage.copy_object(bucket, key, backup.bucket, key)
     end
   end
 end
