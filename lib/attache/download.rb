@@ -24,11 +24,13 @@ class Attache::Download < Attache::Base
         file = begin
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do
-            config.storage_get(relpath: relpath) if config.storage && config.bucket
+            results = []
+            [config.storage && config.bucket && config, config.backup].compact.collect {|vhost|
+              results << download_or_nil(vhost, { relpath: relpath })
+            }.each { |t| t.join }
+            results.compact.first
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
-          Attache.logger.error $@
-          Attache.logger.error $!
           Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
           nil
         end
@@ -81,6 +83,14 @@ class Attache::Download < Attache::Base
       RESIZE_JOB_POOL.with do |job|
         job.perform(file, geometry, extension)
       end
+    end
+
+    def download_or_nil(vhost, args)
+      vhost.storage_get(args)
+    rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
+      Attache.logger.error $@
+      Attache.logger.error $!
+      nil
     end
 
 end
