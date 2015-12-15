@@ -27,11 +27,9 @@ class Attache::Download < Attache::Base
         file = begin
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do
-            results = []
-            [config.storage && config.bucket && config, config.backup].compact.collect {|vhost|
-              results << download_or_nil(vhost, { relpath: relpath })
-            }.each { |t| t.join }
-            results.compact.first
+            get_first_result_async(vhosts.inject({}) {|sum,(k,v)|
+              v ? sum.merge("#{k} #{relpath}" => lambda { v.storage_get(relpath: relpath) }) : sum
+            })
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
           Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
@@ -89,12 +87,25 @@ class Attache::Download < Attache::Base
       end
     end
 
-    def download_or_nil(vhost, args)
-      vhost.storage_get(args)
-    rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
-      Attache.logger.error $@
-      Attache.logger.error $!
-      nil
+    def get_first_result_async(name_code_pairs)
+      result = nil
+      threads = name_code_pairs.collect {|name, code|
+        Thread.new do
+          Thread.handle_interrupt(BasicObject => :on_blocking) { # if killed
+            begin
+              if current_result = code.call
+                result = current_result
+                (threads - [Thread.current]).each(&:kill)        # kill siblings
+                Attache.logger.info "[POOL] found #{name.inspect}"
+              end
+            rescue Exception
+              Attache.logger.info "[POOL] not found #{name.inspect}"
+            ensure
+            end
+          }
+        end
+      }
+      threads.each(&:join)
+      result
     end
-
 end
