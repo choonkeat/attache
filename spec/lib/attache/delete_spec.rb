@@ -72,6 +72,28 @@ describe Attache::Delete do
       end
     end
 
+    context 'backup configured' do
+      let(:backup) { double(:backup) }
+
+      before do
+        allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(backup)
+      end
+
+      it 'should delete file in backup' do
+        expect(backup).to receive(:async) do |method, path|
+          expect(method).to eq(:storage_destroy)
+        end.exactly(2).times
+        subject.call
+      end
+    end
+
+    context 'backup NOT configured' do
+      it 'should NOT delete file in backup' do
+        expect_any_instance_of(Attache::VHost).not_to receive(:async)
+        subject.call
+      end
+    end
+
     context 'with secret_key' do
       let(:secret_key) { "topsecret#{rand}" }
 
