@@ -11,12 +11,12 @@ class Attache::Download < Attache::Base
   def _call(env, config)
     case env['PATH_INFO']
     when %r{\A/view/}
-      redirect_geometries = {}
-      redirect_geometries[ENV.fetch('REMOTE_GEOMETRY') { 'remote' }] = config.storage && config.bucket && config
-      redirect_geometries[ENV.fetch('BACKUP_GEOMETRY') { 'backup' }] = config.backup
+      vhosts = {}
+      vhosts[ENV.fetch('REMOTE_GEOMETRY') { 'remote' }] = config.storage && config.bucket && config
+      vhosts[ENV.fetch('BACKUP_GEOMETRY') { 'backup' }] = config.backup
 
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-        if vhost = redirect_geometries[geometry]
+        if vhost = vhosts[geometry]
           headers = vhost.download_headers.merge({
                       'Location' => vhost.storage_url(relpath: relpath),
                       'Cache-Control' => 'private, no-cache',
@@ -43,7 +43,7 @@ class Attache::Download < Attache::Base
         end
 
         thumbnail = case geometry
-        when 'original', *redirect_geometries.keys
+        when 'original', *vhosts.keys
           file
         else
           extension = basename.split(/\W+/).last

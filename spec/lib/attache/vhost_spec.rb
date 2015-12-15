@@ -25,7 +25,7 @@ describe Attache::VHost do
       allow(Attache.cache).to receive(:read) { raise Exception.new }
       expect(remote_api).not_to receive(:create)
 
-      expect { vhost.storage_create(relpath: relpath, cachekey: cachekey) }.to raise_error
+      expect { vhost.storage_create(relpath: relpath, cachekey: cachekey) }.to raise_error(Exception)
     end
   end
 
@@ -55,6 +55,7 @@ describe Attache::VHost do
 
     describe '#backup_file' do
       it 'should not do anything' do
+        allow_message_expectations_on_nil
         expect(vhost.storage).not_to receive(:copy_object)
         vhost.backup_file(relpath: relpath)
       end

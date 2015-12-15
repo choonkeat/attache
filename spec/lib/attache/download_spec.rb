@@ -38,6 +38,8 @@ describe Attache::Download do
         before do
           allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
           allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
+          allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(nil)
+          allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(nil)
         end
 
         it 'should respond not found' do
@@ -47,7 +49,7 @@ describe Attache::Download do
 
         context 'with backup configured' do
           it 'should respond not found' do
-            allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(double(:backup))
+            allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(double(:backup, storage_get: nil))
             code, headers, body = subject.call
             expect(code).to eq(404)
           end
