@@ -16,7 +16,7 @@ You can run your own instance on your own Heroku server
 docker run -it -p 9292:5000 --rm attache/attache
 ```
 
-Also, see [deploying attache on digital ocean in 5 minutes](https://github.com/choonkeat/attache/wiki/Deploying-Attache-on-Digital-Ocean)
+Also, see [Deploying Attache on Digital Ocean using Docker](https://github.com/choonkeat/attache/wiki/Deploying-Attache-on-Digital-Ocean-using-Docker)
 
 #### Source code
 
