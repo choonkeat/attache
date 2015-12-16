@@ -1,8 +1,8 @@
 require 'spec_helper'
 
-describe Attache::Delete do
+describe Attache::Backup do
   let(:app) { ->(env) { [200, env, "app"] } }
-  let(:middleware) { Attache::Delete.new(app) }
+  let(:middleware) { Attache::Backup.new(app) }
   let(:params) { {} }
   let(:filename) { "hello#{rand}.gif" }
   let(:reldirname) { "path#{rand}" }
@@ -22,33 +22,18 @@ describe Attache::Delete do
     expect(code).to eq 200
   end
 
-  context "deleting" do
+  context "backup file" do
     let(:params) { Hash(paths: ['image1.jpg', filename].join("\n")) }
 
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/delete?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'DELETE', "HTTP_HOST" => "example.com") } }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://example.com/backup?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'DELETE', "HTTP_HOST" => "example.com") } }
 
     it 'should respond with json' do
     end
 
-    it 'should delete file locally' do
-      expect(Attache.cache).to receive(:delete) do |path|
-        expect(path).to start_with('example.com')
-      end.exactly(2).times
+    it 'should not touch local file' do
+      expect(Attache).not_to receive(:cache)
       code, headers, body = subject.call
       expect(code).to eq(200)
-    end
-
-    context 'delete fail locally' do
-      before do
-        expect(Attache.cache).to receive(:delete) do
-          raise Exception.new
-        end
-      end
-
-      it 'should respond with error' do
-        code, headers, body = subject.call
-        expect(code).to eq(500)
-      end
     end
 
     context 'storage configured' do
@@ -57,39 +42,15 @@ describe Attache::Delete do
         allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
       end
 
-      it 'should delete file remotely' do
-        expect_any_instance_of(Attache::VHost).to receive(:async) do |instance, method, path|
-          expect(method).to eq(:storage_destroy)
-        end.exactly(2).times
+      it 'should backup file' do
+        expect_any_instance_of(Attache::VHost).to receive(:backup_file).exactly(2).times
         subject.call
       end
     end
 
     context 'storage NOT configured' do
-      it 'should NOT delete file remotely' do
-        expect_any_instance_of(Attache::VHost).not_to receive(:async)
-        subject.call
-      end
-    end
-
-    context 'backup configured' do
-      let(:backup) { double(:backup) }
-
-      before do
-        allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(backup)
-      end
-
-      it 'should delete file in backup' do
-        expect(backup).to receive(:async) do |method, path|
-          expect(method).to eq(:storage_destroy)
-        end.exactly(2).times
-        subject.call
-      end
-    end
-
-    context 'backup NOT configured' do
-      it 'should NOT delete file in backup' do
-        expect_any_instance_of(Attache::VHost).not_to receive(:async)
+      it 'should backup file' do
+        expect_any_instance_of(Attache::VHost).not_to receive(:backup_file)
         subject.call
       end
     end

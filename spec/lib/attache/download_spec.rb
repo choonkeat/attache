@@ -27,43 +27,69 @@ describe Attache::Download do
     subject { proc { middleware.call Rack::MockRequest.env_for("http://example.com/view/#{reldirname}/#{geometry}/#{filename}", "HTTP_HOST" => "example.com") } }
 
     context 'not in local cache' do
-      context 'not available remotely' do
+      context 'no cloud storage configured' do
         it 'should respond not found' do
           code, headers, body = subject.call
           expect(code).to eq(404)
         end
       end
 
-      context 'available remotely' do
+      context 'with cloud storage configured' do
         before do
           allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
           allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
-          allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(file)
+          allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(nil)
+          allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(nil)
         end
 
-        it 'should proceed normally' do
+        it 'should respond not found' do
           code, headers, body = subject.call
-          expect(code).to eq(200)
+          expect(code).to eq(404)
         end
 
-        context 'geometry is "remote"' do
-          let(:remote_url) { "http://example.com/image.jpg" }
-          let(:geometry) { CGI.escape('remote') }
-
-          before do
-            allow_any_instance_of(Attache::VHost).to receive(:storage_url).and_return(remote_url)
+        context 'with backup configured' do
+          it 'should respond not found' do
+            allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(double(:backup, storage_get: nil))
+            code, headers, body = subject.call
+            expect(code).to eq(404)
           end
 
-          it 'should send remote file' do
-            expect(Attache.cache).not_to receive(:fetch)
-            expect_any_instance_of(Attache::VHost).to receive(:storage_url)
+          it 'should respond found if in backup' do
+            allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(double(:backup, storage_get: file))
             code, headers, body = subject.call
-            response_content = ''
-            body.each {|p| response_content += p }
-            expect(response_content).to eq('')
-            expect(code).to eq(302)
-            expect(headers['Location']).to eq(remote_url)
-            expect(headers['Cache-Control']).to eq("private, no-cache")
+            expect(code).to eq(200)
+          end
+        end
+
+        context 'available remotely' do
+          before do
+            allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(file)
+          end
+
+          it 'should proceed normally' do
+            code, headers, body = subject.call
+            expect(code).to eq(200)
+          end
+
+          context 'geometry is "remote"' do
+            let(:remote_url) { "http://example.com/image.jpg" }
+            let(:geometry) { CGI.escape('remote') }
+
+            before do
+              allow_any_instance_of(Attache::VHost).to receive(:storage_url).and_return(remote_url)
+            end
+
+            it 'should send remote file' do
+              expect(Attache.cache).not_to receive(:fetch)
+              expect_any_instance_of(Attache::VHost).to receive(:storage_url)
+              code, headers, body = subject.call
+              response_content = ''
+              body.each {|p| response_content += p }
+              expect(response_content).to eq('')
+              expect(code).to eq(302)
+              expect(headers['Location']).to eq(remote_url)
+              expect(headers['Cache-Control']).to eq("private, no-cache")
+            end
           end
         end
       end

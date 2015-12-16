@@ -52,6 +52,7 @@ require 'attache/base'
 require 'attache/vhost'
 require 'attache/upload'
 require 'attache/delete'
+require 'attache/backup'
 require 'attache/download'
 require 'attache/file_response_body'
 

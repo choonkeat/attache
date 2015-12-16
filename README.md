@@ -173,6 +173,23 @@ Removing 1 or more files from the local cache and remote storage can be done via
 
 The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for deletion: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`.
 
+#### Backup
+
+> ```
+> POST /backup
+> paths=image1.jpg%0Aprefix2%2Fimage2.jpg%0Aimage3.jpg
+> ```
+
+Copying 1 or more files from the default remote storage to the backup remote storage (backup) can be done via a http `POST` request to `/backup`, with a `paths` parameter in the request body.
+
+The `paths` value should be delimited by the newline character, aka `\n`. In the example above, 3 files will be requested for backup: `image1.jpg`, `prefix2/image2.jpg`, and `image3.jpg`.
+
+If backup remote storage is not configured, this API call will be a noop. If configured, the backup storage must be accessible by the same credentials as default cloud storage as the system. Please refer to the `BACKUP_CONFIG` configuration illustrated in `config/vhost.example.yml` file in this repository.
+
+By default, `backup` operation is performed synchronously. Set `BACKUP_ASYNC` environment variable to make it follow the same synchronicity as `delete`
+
+The main reason to configure a backup storage is to make the default cloud storage auto expire files; mitigating [abuse](https://github.com/choonkeat/attache/issues/13). You should consult the documentation of your cloud storage provider on how to setup auto expiry, e.g. [here](https://aws.amazon.com/blogs/aws/amazon-s3-object-expiration/) or [here](https://cloud.google.com/storage/docs/lifecycle)
+
 ## License
 
 MIT

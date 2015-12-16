@@ -11,13 +11,28 @@ class Attache::Delete < Attache::Base
       return config.unauthorized unless config.authorized?(params)
 
       params['paths'].to_s.split("\n").each do |relpath|
-        Attache.logger.info "DELETING local #{relpath}"
-        cachekey = File.join(request_hostname(env), relpath)
-        Attache.cache.delete(cachekey)
-        if config.storage && config.bucket
-          Attache.logger.info "DELETING remote #{relpath}"
-          config.async(:storage_destroy, relpath: relpath)
+        threads = []
+
+        if Attache.cache
+          threads << Thread.new do
+            Attache.logger.info "DELETING local #{relpath}"
+            cachekey = File.join(request_hostname(env), relpath)
+            Attache.cache.delete(cachekey)
+          end
         end
+        if config.storage && config.bucket
+          threads << Thread.new do
+            Attache.logger.info "DELETING remote #{relpath}"
+            config.async(:storage_destroy, relpath: relpath)
+          end
+        end
+        if config.backup
+          threads << Thread.new do
+            Attache.logger.info "DELETING backup #{relpath}"
+            config.backup.async(:storage_destroy, relpath: relpath)
+          end
+        end
+        threads.each(&:join)
       end
       [200, config.headers_with_cors, []]
     else

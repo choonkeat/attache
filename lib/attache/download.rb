@@ -1,7 +1,6 @@
 require 'connection_pool'
 
 class Attache::Download < Attache::Base
-  REMOTE_GEOMETRY = ENV.fetch('REMOTE_GEOMETRY') { 'remote' }
   OUTPUT_EXTENSIONS = %w[png jpg jpeg gif]
   RESIZE_JOB_POOL = ConnectionPool.new(JSON.parse(ENV.fetch('RESIZE_POOL') { '{ "size": 2, "timeout": 60 }' }).symbolize_keys) { Attache::ResizeJob.new }
 
@@ -12,10 +11,14 @@ class Attache::Download < Attache::Base
   def _call(env, config)
     case env['PATH_INFO']
     when %r{\A/view/}
+      vhosts = {}
+      vhosts[ENV.fetch('REMOTE_GEOMETRY') { 'remote' }] = config.storage && config.bucket && config
+      vhosts[ENV.fetch('BACKUP_GEOMETRY') { 'backup' }] = config.backup
+
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-        if geometry == REMOTE_GEOMETRY && config.storage && config.bucket
-          headers = config.download_headers.merge({
-                      'Location' => config.storage_url(relpath: relpath),
+        if vhost = vhosts[geometry]
+          headers = vhost.download_headers.merge({
+                      'Location' => vhost.storage_url(relpath: relpath),
                       'Cache-Control' => 'private, no-cache',
                     })
           return [302, headers, []]
@@ -24,11 +27,11 @@ class Attache::Download < Attache::Base
         file = begin
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do
-            config.storage_get(relpath: relpath) if config.storage && config.bucket
+            get_first_result_async(vhosts.inject({}) {|sum,(k,v)|
+              v ? sum.merge("#{k} #{relpath}" => lambda { v.storage_get(relpath: relpath) }) : sum
+            })
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
-          Attache.logger.error $@
-          Attache.logger.error $!
           Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
           nil
         end
@@ -37,7 +40,8 @@ class Attache::Download < Attache::Base
           return [404, config.download_headers, []]
         end
 
-        thumbnail = if geometry == 'original' || geometry == REMOTE_GEOMETRY
+        thumbnail = case geometry
+        when 'original', *vhosts.keys
           file
         else
           extension = basename.split(/\W+/).last
@@ -83,4 +87,25 @@ class Attache::Download < Attache::Base
       end
     end
 
+    def get_first_result_async(name_code_pairs)
+      result = nil
+      threads = name_code_pairs.collect {|name, code|
+        Thread.new do
+          Thread.handle_interrupt(BasicObject => :on_blocking) { # if killed
+            begin
+              if current_result = code.call
+                result = current_result
+                (threads - [Thread.current]).each(&:kill)        # kill siblings
+                Attache.logger.info "[POOL] found #{name.inspect}"
+              end
+            rescue Exception
+              Attache.logger.info "[POOL] not found #{name.inspect}"
+            ensure
+            end
+          }
+        end
+      }
+      threads.each(&:join)
+      result
+    end
 end
