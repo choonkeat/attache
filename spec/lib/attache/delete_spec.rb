@@ -42,7 +42,7 @@ describe Attache::Delete do
       before do
         expect(Attache.cache).to receive(:delete) do
           raise Exception.new
-        end
+        end.at_least(1).times
       end
 
       it 'should respond with error' do

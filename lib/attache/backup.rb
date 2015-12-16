@@ -12,10 +12,14 @@ class Attache::Backup < Attache::Base
 
       if config.storage && config.bucket
         sync_method = (ENV['BACKUP_ASYNC'] ? :async : :send)
+        threads = []
         params['paths'].to_s.split("\n").each do |relpath|
-          Attache.logger.info "BACKUP remote #{relpath}"
-          config.send(sync_method, :backup_file, relpath: relpath)
+          threads << Thread.new do
+            Attache.logger.info "BACKUP remote #{relpath}"
+            config.send(sync_method, :backup_file, relpath: relpath)
+          end
         end
+        threads.each(&:join)
       end
       [200, config.headers_with_cors, []]
     else

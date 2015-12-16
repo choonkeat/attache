@@ -10,9 +10,8 @@ class Attache::Delete < Attache::Base
       params   = request.params
       return config.unauthorized unless config.authorized?(params)
 
+      threads = []
       params['paths'].to_s.split("\n").each do |relpath|
-        threads = []
-
         if Attache.cache
           threads << Thread.new do
             Attache.logger.info "DELETING local #{relpath}"
@@ -32,8 +31,8 @@ class Attache::Delete < Attache::Base
             config.backup.async(:storage_destroy, relpath: relpath)
           end
         end
-        threads.each(&:join)
       end
+      threads.each(&:join)
       [200, config.headers_with_cors, []]
     else
       @app.call(env)
