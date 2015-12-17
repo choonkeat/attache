@@ -37,9 +37,5 @@ class Attache::Delete < Attache::Base
     else
       @app.call(env)
     end
-  rescue Exception
-    Attache.logger.error $@
-    Attache.logger.error $!
-    [500, { 'X-Exception' => $!.to_s }, []]
   end
 end

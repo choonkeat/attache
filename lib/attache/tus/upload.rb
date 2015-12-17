@@ -66,11 +66,6 @@ class Attache::Tus::Upload < Attache::Base
     else
       @app.call(env)
     end
-  rescue Exception
-    Attache.logger.error $@
-    Attache.logger.error $!
-    Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
-    [500, { 'X-Exception' => $!.to_s }, []]
   end
 
   private

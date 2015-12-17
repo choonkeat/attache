@@ -5,6 +5,16 @@ class Attache::Base
     else
       @app.call(env)
     end
+  rescue Timeout::Error
+    Attache.logger.error $@
+    Attache.logger.error $!
+    Attache.logger.error "ERROR 503 #{env['PATH_INFO']} REFERER #{env['HTTP_REFERER'].inspect}"
+    [503, { 'X-Exception' => $!.to_s }, []]
+  rescue Exception
+    Attache.logger.error $@
+    Attache.logger.error $!
+    Attache.logger.error "ERROR 500 #{env['PATH_INFO']} REFERER #{env['HTTP_REFERER'].inspect}"
+    [500, { 'X-Exception' => $!.to_s }, []]
   end
 
   def vhost_for(host)
