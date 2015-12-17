@@ -28,7 +28,18 @@ class Attache::Download < Attache::Base
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do
             get_first_result_async(vhosts.inject({}) {|sum,(k,v)|
-              v ? sum.merge("#{k} #{relpath}" => lambda { v.storage_get(relpath: relpath) }) : sum
+              if v
+                sum.merge("#{k} #{relpath}" => lambda {
+                  begin
+                    v.storage_get(relpath: relpath)
+                  rescue Exception
+                    Attache.logger.info "[POOL] not found #{k} #{relpath}"
+                    nil
+                  end
+                })
+              else
+                sum
+              end
             })
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
@@ -92,15 +103,14 @@ class Attache::Download < Attache::Base
       threads = name_code_pairs.collect {|name, code|
         Thread.new do
           Thread.handle_interrupt(BasicObject => :on_blocking) { # if killed
-            begin
-              if current_result = code.call
-                result = current_result
-                (threads - [Thread.current]).each(&:kill)        # kill siblings
-                Attache.logger.info "[POOL] found #{name.inspect}"
-              end
-            rescue Exception
-              Attache.logger.info "[POOL] not found #{name.inspect}"
-            ensure
+            if result
+              # war over
+            elsif current_result = code.call
+              result = current_result
+              (threads - [Thread.current]).each(&:kill)        # kill siblings
+              Attache.logger.info "[POOL] found #{name.inspect}"
+            else
+              # no contribution
             end
           }
         end
