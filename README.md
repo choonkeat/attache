@@ -25,6 +25,7 @@ You can checkout the source code and run it like a regular [a Procfile-based app
 ```
 git clone https://github.com/choonkeat/attache.git
 cd attache
+bundle install
 foreman start -c web=1 -p 9292
 ```
 
