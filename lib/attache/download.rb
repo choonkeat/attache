@@ -27,19 +27,18 @@ class Attache::Download < Attache::Base
         file = begin
           cachekey = File.join(request_hostname(env), relpath)
           Attache.cache.fetch(cachekey) do
-            get_first_result_async(vhosts.inject({}) {|sum,(k,v)|
-              if v
-                sum.merge("#{k} #{relpath}" => lambda {
-                  begin
-                    v.storage_get(relpath: relpath)
-                  rescue Exception
-                    Attache.logger.info "[POOL] not found #{k} #{relpath}"
-                    nil
+            name_with_vhost_pairs = vhosts.inject({}) { |sum,(k,v)| (v ? sum.merge(k => v) : sum) }
+            get_first_result_present_async(name_with_vhost_pairs.collect {|name, vhost|
+              lambda { Thread.handle_interrupt(BasicObject => :on_blocking) {
+                begin
+                  vhost.storage_get(relpath: relpath).tap do |v|
+                    Attache.logger.info "[POOL] found #{name} #{relpath} = #{v.inspect}"
                   end
-                })
-              else
-                sum
-              end
+                rescue Exception
+                  Attache.logger.info "[POOL] not found #{name} #{relpath}"
+                  nil
+                end
+              } }
             })
           end
         rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
@@ -93,24 +92,16 @@ class Attache::Download < Attache::Base
       end
     end
 
-    def get_first_result_async(name_code_pairs)
-      result = nil
-      threads = name_code_pairs.collect {|name, code|
-        Thread.new do
-          Thread.handle_interrupt(BasicObject => :on_blocking) { # if killed
-            if result
-              # war over
-            elsif current_result = code.call
-              result = current_result
-              (threads - [Thread.current]).each(&:kill)        # kill siblings
-              Attache.logger.info "[POOL] found #{name.inspect}"
-            else
-              # no contribution
-            end
-          }
-        end
-      }
-      threads.each(&:join)
+    # Ref https://gist.github.com/sferik/39831f34eb87686b639c#gistcomment-1652888
+    # a bit more complicated because we *want* to ignore falsey result
+    def get_first_result_present_async(lambdas)
+      return if lambdas.empty? # queue.pop will never happen
+      queue = Queue.new
+      threads = lambdas.collect { |code| Thread.new { queue << code.call } }
+      until result = queue.pop do
+        break unless threads.any?(&:alive?) || queue.size > 0
+      end
+      threads.each(&:kill)
       result
     end
 end
