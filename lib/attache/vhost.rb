@@ -46,7 +46,9 @@ class Attache::VHost
   def storage_url(args)
     remote_api.new({
       key: File.join(*remotedir, args[:relpath]),
-    }).url(Time.now + 60)
+    }).url(Time.now + 600).tap do |url|
+      Attache.logger.info "storage_url: #{url}"
+    end
   end
 
   def storage_get(args)
