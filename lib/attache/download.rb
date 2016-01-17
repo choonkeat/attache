@@ -31,10 +31,13 @@ class Attache::Download < Attache::Base
             get_first_result_present_async(name_with_vhost_pairs.collect {|name, vhost|
               lambda { Thread.handle_interrupt(BasicObject => :on_blocking) {
                 begin
+                  Attache.logger.info "[POOL] looking for #{name} #{relpath}..."
                   vhost.storage_get(relpath: relpath).tap do |v|
                     Attache.logger.info "[POOL] found #{name} #{relpath} = #{v.inspect}"
                   end
                 rescue Exception
+                  Attache.logger.error $!
+                  Attache.logger.error $@
                   Attache.logger.info "[POOL] not found #{name} #{relpath}"
                   nil
                 end
@@ -97,11 +100,14 @@ class Attache::Download < Attache::Base
     def get_first_result_present_async(lambdas)
       return if lambdas.empty? # queue.pop will never happen
       queue = Queue.new
-      threads = lambdas.collect { |code| Thread.new { queue << code.call } }
-      until result = queue.pop do
+      threads = lambdas.shuffle.collect { |code| Thread.new { queue << [Thread.current, code.call] } }
+      until (item = queue.pop).last do
+        thread, _ = item
+        thread.kill # we could be popping `queue` before thread exited
         break unless threads.any?(&:alive?) || queue.size > 0
       end
       threads.each(&:kill)
+      _, result = item
       result
     end
 end
