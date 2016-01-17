@@ -134,15 +134,23 @@ describe Attache::Download do
       end
 
       context 'geometry is "remote"' do
+        let(:remote_url) { "http://example.com/image.jpg" }
         let(:geometry) { CGI.escape('remote') }
 
-        it 'should send original file' do
-          expect_any_instance_of(middleware.class).not_to receive(:make_thumbnail_for)
+        before do
+          allow_any_instance_of(Attache::VHost).to receive(:storage_url).and_return(remote_url)
+        end
+
+        it 'should send remote file' do
+          expect(Attache.cache).not_to receive(:fetch)
+          expect_any_instance_of(Attache::VHost).to receive(:storage_url)
           code, headers, body = subject.call
           response_content = ''
           body.each {|p| response_content += p }
-          original_content = file.tap(&:rewind).read
-          expect(response_content).to eq(original_content)
+          expect(response_content).to eq('')
+          expect(code).to eq(302)
+          expect(headers['Location']).to eq(remote_url)
+          expect(headers['Cache-Control']).to eq("private, no-cache")
         end
       end
     end
