@@ -136,13 +136,13 @@ describe Attache::Download do
     end
 
     context 'rendering' do
-      before do
-        Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
-      end
-
       context 'non image' do
-        let!(:file) { StringIO.new(IO.binread("spec/fixtures/sample.txt"), 'rb') }
-        let!(:filename) { "hello#{rand}.txt" }
+        let(:file) { StringIO.new(IO.binread("spec/fixtures/sample.txt"), 'rb') }
+        let(:filename) { "hello#{rand}.txt" }
+
+        before do
+          Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
+        end
 
         it 'should output as png' do
           expect_any_instance_of(Attache::ResizeJob).to receive(:make_nonimage_preview).exactly(1).times.and_call_original
@@ -153,8 +153,9 @@ describe Attache::Download do
       end
 
       context 'image' do
-        let!(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
-        let!(:filename) { "hello#{rand}.gif" }
+        before do
+          Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
+        end
 
         it 'should output as gif' do
           expect_any_instance_of(Attache::ResizeJob).not_to receive(:make_nonimage_preview)
