@@ -100,26 +100,6 @@ describe Attache::Download do
         Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
       end
 
-      context 'extension is for output' do
-        let(:filename) { "hello#{rand}.JPg" }
-
-        it 'should output as jpg' do
-          code, headers, body = subject.call
-          expect(code).to eq(200)
-          expect(headers['Content-Type']).to eq("image/jpeg")
-        end
-      end
-
-      context 'extension is not for output' do
-        let(:filename) { "hello#{rand}.PdF" }
-
-        it 'should output as png' do
-          code, headers, body = subject.call
-          expect(code).to eq(200)
-          expect(headers['Content-Type']).to eq('image/png')
-        end
-      end
-
       context 'geometry is "original"' do
         let(:geometry) { CGI.escape('original') }
 
@@ -151,6 +131,36 @@ describe Attache::Download do
           expect(code).to eq(302)
           expect(headers['Location']).to eq(remote_url)
           expect(headers['Cache-Control']).to eq("private, no-cache")
+        end
+      end
+    end
+
+    context 'rendering' do
+      before do
+        Attache.cache.write("example.com/#{reldirname}/#{filename}", file)
+      end
+
+      context 'non image' do
+        let!(:file) { StringIO.new(IO.binread("spec/fixtures/sample.txt"), 'rb') }
+        let!(:filename) { "hello#{rand}.txt" }
+
+        it 'should output as png' do
+          expect_any_instance_of(Attache::ResizeJob).to receive(:make_nonimage_preview).exactly(1).times.and_call_original
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq("image/png")
+        end
+      end
+
+      context 'image' do
+        let!(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
+        let!(:filename) { "hello#{rand}.gif" }
+
+        it 'should output as gif' do
+          expect_any_instance_of(Attache::ResizeJob).not_to receive(:make_nonimage_preview)
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq("image/gif")
         end
       end
     end

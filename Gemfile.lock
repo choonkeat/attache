@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    attache (2.0.0)
+    attache (2.1.0)
       celluloid (< 0.17)
       connection_pool (~> 2.2)
       disk_store (~> 0)
