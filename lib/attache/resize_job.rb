@@ -17,7 +17,7 @@ class Attache::ResizeJob
 
   private
 
-    FONT_FILE = ENV.fetch('FONT_FILE', `convert -list font | grep ttf | head -n 1 | while read key value; do echo $value; done`.chomp)
+    FONT_FILE = ENV.fetch('FONT_FILE', File.join(Attache.publicdir, "vendor/roboto/Roboto-Medium.ttf"))
     BORDER_SIZE = ENV.fetch('BORDER_SIZE', "3")
     FG_COLOR = ENV.fetch('FG_COLOR', "#f9f9f9")
     BG_COLOR = ENV.fetch('BG_COLOR', "#888888")
@@ -30,7 +30,7 @@ class Attache::ResizeJob
       output_file = Tempfile.new(["preview", ".png"]).tap(&:close)
       cmd = case basename
       when /\.pdf$/i
-        "convert #{closed_file.path.inspect}[0] -thumbnail #{PREVIEW_SIZE.inspect}"
+        "convert #{closed_file.path.inspect}[0] -thumbnail #{PREVIEW_SIZE.inspect} -font #{FONT_FILE.inspect}"
       else
         "convert -size #{PREVIEW_SIZE.inspect} \\( -gravity center -font #{FONT_FILE.inspect} -border 10 -bordercolor #{FG_COLOR.inspect} -background #{FG_COLOR.inspect} label:'.#{make_safe_filename(basename).split(/\W+/).last}' \\)"
       end + " -bordercolor #{FG_COLOR.inspect} -border #{BORDER_SIZE} -background #{BG_COLOR.inspect} -pointsize 12 -set caption #{basename.inspect} -polaroid 0 #{output_file.path.inspect}"

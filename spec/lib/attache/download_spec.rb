@@ -12,6 +12,8 @@ describe Attache::Download do
   before do
     allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
     allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
+    allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(nil)
+    allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(nil)
   end
 
   after do
@@ -38,8 +40,6 @@ describe Attache::Download do
         before do
           allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
           allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
-          allow_any_instance_of(Attache::VHost).to receive(:storage_get).and_return(nil)
-          allow_any_instance_of(Attache::VHost).to receive(:backup).and_return(nil)
         end
 
         it 'should respond not found' do
