@@ -101,9 +101,11 @@ class Attache::Download < Attache::Base
       threads = lambdas.shuffle.collect { |code| Thread.new { queue << [Thread.current, code.call] } }
       until (item = queue.pop).last do
         thread, _ = item
-        thread.kill # we could be popping `queue` before thread exited
+        thread.join # we could be popping `queue` before thread exited
+        puts "blank? " + [threads, queue].inspect
         break unless threads.any?(&:alive?) || queue.size > 0
       end
+      puts "end " + [threads, item].inspect
       threads.each(&:kill)
       _, result = item
       result
