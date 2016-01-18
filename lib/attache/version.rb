@@ -1,3 +1,3 @@
 module Attache
-  VERSION = "1.1.4"
+  VERSION = "2.1.0"
 end

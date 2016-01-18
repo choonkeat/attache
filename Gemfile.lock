@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    attache (1.1.4)
+    attache (2.1.0)
       celluloid (< 0.17)
       connection_pool (~> 2.2)
       disk_store (~> 0)
@@ -125,7 +125,7 @@ GEM
       fog-core
       fog-json
       fog-xml
-    fog-sakuracloud (1.5.0)
+    fog-sakuracloud (1.5.2)
       fog-core
       fog-json
     fog-serverlove (0.1.2)
