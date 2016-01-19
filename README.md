@@ -8,6 +8,7 @@
 If you're interested in the "why", checkout [my slides](http://www.slideshare.net/choonkeat/file-upload-2015) and [the blog post](http://blog.choonkeat.com/weblog/2015/10/file-uploads-2015.html).
 
 Your app can easily support
+- dynamic resize of images (no predefined styles in your app)
 - all file types since attache let apps [display non-image files as icons through `<img src...>`](https://github.com/choonkeat/attache/pull/28)
 - resumeable upload over unreliable (mobile) networks [using TUS protocol](https://github.com/choonkeat/attache/pull/10)
 
@@ -192,6 +193,8 @@ The `paths` value should be delimited by the newline character, aka `\n`. In the
 > POST /backup
 > paths=image1.jpg%0Aprefix2%2Fimage2.jpg%0Aimage3.jpg
 > ```
+
+This feature might be known as `promote` in other file upload solutions. `attache` allows client app to `backup` uploaded images to another bucket for longer term storage.
 
 Copying 1 or more files from the default remote storage to the backup remote storage (backup) can be done via a http `POST` request to `/backup`, with a `paths` parameter in the request body.
 
