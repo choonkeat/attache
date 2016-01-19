@@ -1,8 +1,13 @@
 # attache
 
+[![Gem Version](https://badge.fury.io/rb/attache.svg)](https://badge.fury.io/rb/attache)
 [![Build Status](https://travis-ci.org/choonkeat/attache.svg?branch=master)](https://travis-ci.org/choonkeat/attache)
 
-## Run
+## But why?
+
+If you're interested in the "why", checkout [my slides](http://www.slideshare.net/choonkeat/file-upload-2015) and [the blog post](http://blog.choonkeat.com/weblog/2015/10/file-uploads-2015.html).
+
+## Run an instance
 
 #### Heroku
 
@@ -17,19 +22,6 @@ docker run -it -p 9292:5000 --rm attache/attache
 ```
 
 Also, see [Deploying Attache on Digital Ocean using Docker](https://github.com/choonkeat/attache/wiki/Deploying-Attache-on-Digital-Ocean-using-Docker)
-
-#### Source code
-
-You can checkout the source code and run it like a regular [a Procfile-based app](ddollar.github.io/foreman/)
-
-```
-git clone https://github.com/choonkeat/attache.git
-cd attache
-bundle install
-foreman start -c web=1 -p 9292
-```
-
-See [foreman](https://github.com/ddollar/foreman) for more details.
 
 #### RubyGem
 
@@ -68,7 +60,20 @@ bundle exec attache start -c web=1 -p 9292
 
 NOTE: some config files will be written into your current directory (see RubyGems above)
 
-## Configure
+#### Source code
+
+You can checkout the source code and run it like a regular [a Procfile-based app](ddollar.github.io/foreman/)
+
+```
+git clone https://github.com/choonkeat/attache.git
+cd attache
+bundle install
+foreman start -c web=1 -p 9292
+```
+
+See [foreman](https://github.com/ddollar/foreman) for more details.
+
+## Configuration
 
 `LOCAL_DIR` is where your local disk cache will be. By default, attache will use a system assigned temporary directory which may not be the same everytime you run attache.
 
@@ -82,7 +87,7 @@ However if you prefer a more durable queue for reliable uploads, configuring `RE
 
 If for some reason you'd want the cloud storage delete to be synchronous, set `INLINE_JOB=1` instead.
 
-#### Cloud Storage Virtual Host
+#### Virtual Host Cloud Storage
 
 `attache` uses a different config (and backup files into a different cloud service) depending on the request hostname that it was accessed by.
 
@@ -102,9 +107,15 @@ heroku config:set VHOST=$(bundle exec rake attache:vhost)
 
 #### Virtual Host Authorization
 
-By default `attache` will accept uploads and delete requests from any client.
+By default `attache` will accept uploads and delete requests from any client. Set `SECRET_KEY` to ensure attache only receives upload (and delete commands) from your own app.
 
-When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Upload and Delete requests will be refused with `HTTP 401` error unless the `hmac` is correct. The additional parameters required for authorized request are:
+To most app developers *using* attache in your rails app through a library like [attache-rails gem](https://github.com/choonkeat/attache-rails), how this work may not matter. But if you are developing attache itself or writing a client library for attache, then read on.
+
+#### Virtual Host Authorization (Developer)
+
+When `SECRET_KEY` is set, `attache` will require a valid `hmac` parameter in the upload request. Upload and Delete requests will be refused with `HTTP 401` error unless the `hmac` is correct.
+
+The additional parameters required for authorized request are:
 
 * `uuid` is a uuid string
 * `expiration` is a unix timestamp of a future time. the significance is, if the timestamp has passed, the upload will be regarded as invalid
@@ -116,8 +127,6 @@ i.e.
 hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), SECRET_KEY, uuid + expiration)
 ```
 
-This will be transparent to you when using integration libraries like [attache_rails gem](https://github.com/choonkeat/attache_rails).
-
 ## APIs
 
 The attache server is a reference implementation of these interfaces. If you write your own server, [compatibility can be verified by running a test suite](https://github.com/choonkeat/attache_api#testing-against-an-attache-compatible-server).
@@ -125,7 +134,6 @@ The attache server is a reference implementation of these interfaces. If you wri
 #### Upload
 
 Users will upload files directly into the `attache` server from their browser, bypassing the main app.
-
 
 > ```
 > PUT /upload?file=image123.jpg
