@@ -7,6 +7,10 @@
 
 If you're interested in the "why", checkout [my slides](http://www.slideshare.net/choonkeat/file-upload-2015) and [the blog post](http://blog.choonkeat.com/weblog/2015/10/file-uploads-2015.html).
 
+Your app can easily support
+- all file types since attache let apps [display non-image files as icons through `<img src...>`](https://github.com/choonkeat/attache/pull/28)
+- resumeable upload over unreliable (mobile) networks [using TUS protocol](https://github.com/choonkeat/attache/pull/10)
+
 ## Run an instance
 
 #### Heroku
