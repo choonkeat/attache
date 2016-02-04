@@ -14,6 +14,32 @@ describe Attache::VHost do
     allow(vhost).to receive(:remote_api).and_return(remote_api)
   end
 
+  describe '#storage_url' do
+    let(:url) { 'http://example.com/a/b/c' }
+
+    before do
+      allow(remote_api).to receive(:new).and_return(files)
+      allow_any_instance_of(Fog::Storage::Local::File).to receive(:public_url).and_return(url)
+      allow_any_instance_of(Fog::Storage::AWS::File).to receive(:url).and_return(url)
+    end
+
+    context 'fog local storage' do
+      let(:files) { return Fog::Storage::Local::File.new }
+
+      it 'should return' do
+        expect(vhost.storage_url(relpath: relpath)).to eq(url)
+      end
+    end
+
+    context 'fog s3 storage' do
+      let(:files) { return Fog::Storage::AWS::File.new }
+
+      it 'should return' do
+        expect(vhost.storage_url(relpath: relpath)).to eq(url)
+      end
+    end
+  end
+
   describe '#storage_create' do
     it 'should read with cachekey, write with remotedir prefix' do
       expect(Attache.cache).to receive(:read).with(cachekey).and_return(file_io)
