@@ -44,10 +44,18 @@ class Attache::VHost
   end
 
   def storage_url(args)
-    remote_api.new({
-      key: File.join(*remotedir, args[:relpath]),
-    }).url(Time.now + 600).tap do |url|
-      Attache.logger.info "storage_url: #{url}"
+    if remote_api.class == Fog::Storage::Local::Files
+      remote_api.new({
+        key: File.join(*remotedir, args[:relpath]),
+      }).public_url.tap do |url|
+        Attache.logger.info "storage_url: #{url}"
+      end
+    else
+      remote_api.new({
+        key: File.join(*remotedir, args[:relpath]),
+      }).url(Time.now + 600).tap do |url|
+        Attache.logger.info "storage_url: #{url}"
+      end
     end
   end
 
