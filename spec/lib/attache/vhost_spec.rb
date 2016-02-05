@@ -1,4 +1,6 @@
 require 'spec_helper'
+require 'fog/storage/local/models/file'
+require 'fog/aws/models/storage/file'
 
 describe Attache::VHost do
   let(:config) { { 'REMOTE_DIR' => remotedir } }
