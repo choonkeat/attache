@@ -48,7 +48,7 @@ class Attache::Download < Attache::Base
           nil
         end
 
-        unless file
+        unless file && file.try(:size).to_i > 0
           return [404, config.download_headers, []]
         end
 

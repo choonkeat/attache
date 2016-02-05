@@ -42,6 +42,13 @@ describe Attache::Download do
           code, headers, body = subject.call
           expect(code).to eq(404)
         end
+
+        it 'should continue to respond not found' do
+          code, headers, body = subject.call
+          expect(code).to eq(404)
+          code, headers, body = subject.call
+          expect(code).to eq(404)
+        end
       end
 
       context 'with cloud storage configured' do
