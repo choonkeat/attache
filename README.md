@@ -67,7 +67,7 @@ NOTE: some config files will be written into your current directory (see RubyGem
 
 #### Source code
 
-You can checkout the source code and run it like a regular [a Procfile-based app](ddollar.github.io/foreman/)
+You can checkout the source code and run it like a regular [a Procfile-based app](https://ddollar.github.io/foreman/):
 
 ```
 git clone https://github.com/choonkeat/attache.git
