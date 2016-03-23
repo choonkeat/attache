@@ -6,6 +6,7 @@ describe Attache::Upload do
   let(:params) { {} }
   let(:filename) { "Exãmple %#{rand} %20.gif" }
   let(:file) { StringIO.new(IO.binread("spec/fixtures/landscape.jpg"), 'rb') }
+  let(:base64_data) { "data:image/jpeg;base64,/9j/4QBiRXhpZgAATU0AKgAAAAgABQESAAMAAAABAAUAAAEaAAUAAAABAAAASgEbAAUAAAABAAAAUgEoAAMAAAABAAIAAAITAAMAAAABAAEAAAAAAAAAAABIAAAAAQAAAEgAAAAB/9sAQwACAgICAgECAgICAwICAwMGBAMDAwMHBQUEBggHCQgIBwgICQoNCwkKDAoICAsPCwwNDg4PDgkLEBEQDhENDg4O/9sAQwECAwMDAwMHBAQHDgkICQ4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4O/8AAEQgABAADAwEiAAIRAQMRAf/EABUAAQEAAAAAAAAAAAAAAAAAAAAJ/8QAHxAAAQMEAwEAAAAAAAAAAAAAAQIDBAAFBhEHEjEh/8QAFQEBAQAAAAAAAAAAAAAAAAAABAX/xAAaEQACAgMAAAAAAAAAAAAAAAABAgARMdHh/9oADAMBAAIRAxEAPwCZefZjIj815UzGsNgjR0XN4NsosrJS2nudJGwToeD75SlKjI7FBzUSC1Zn/9k=" }
   let(:hostname) { "example.com" }
 
   before do
@@ -21,6 +22,24 @@ describe Attache::Upload do
   it "should passthrough irrelevant request" do
     code, headers, body = middleware.call Rack::MockRequest.env_for('http://' + hostname, "HTTP_HOST" => hostname)
     expect(code).to eq 200
+  end
+
+  context "uploading with bash64" do
+    let(:params) { Hash(data: base64_data) }
+
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', "HTTP_HOST" => hostname) } }
+
+    it 'should respond successfully with json' do
+      code, headers, body = subject.call
+      expect(code).to eq(200)
+      expect(headers['Content-Type']).to eq('text/json')
+
+      JSON.parse(body.join('')).tap do |json|
+        expect(json).to be_has_key('path')
+        expect(json['geometry']).to eq('4x3')
+      end
+    end
+
   end
 
   context "uploading" do
