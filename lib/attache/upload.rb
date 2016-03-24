@@ -12,15 +12,11 @@ class Attache::Upload < Attache::Base
         params   = request.params
         return config.unauthorized unless config.authorized?(params)
 
-        if params.has_key? 'data'
-
-          base_64_encoded_data = params['data']
-          decoded_image = Base64.decode64(base_64_encoded_data)
-
+        if params['type'] == 'base64'
+          split_encoded = split_base64(request.body.read)
           relpath = generate_relpath(Attache::Upload.sanitize params['file'])
           cachekey = File.join(request_hostname(env), relpath)
-
-          bytes_wrote = Attache.cache.write(cachekey, StringIO.new(decoded_image))
+          bytes_wrote = Attache.cache.write(cachekey, StringIO.new(split_encoded[:data]))
         else
           relpath = generate_relpath(Attache::Upload.sanitize params['file'])
           cachekey = File.join(request_hostname(env), relpath)
@@ -48,5 +44,19 @@ class Attache::Upload < Attache::Base
 
   def self.sanitize(filename)
     filename.to_s.gsub(/\%/, '_')
+  end
+
+  private
+
+  def split_base64(encoded)
+    encoded.gsub!(/\n/,'')
+    if encoded.match(%r{^data:(.*?);(.*?),(.*)$})
+      {
+        type: $1,
+        encoder: $2,
+        data: Base64.decode64($3),
+        extension: $1.split('/')[1]
+      }
+    end
   end
 end

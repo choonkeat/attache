@@ -6,7 +6,7 @@ describe Attache::Upload do
   let(:params) { {} }
   let(:filename) { "Exãmple %#{rand} %20.gif" }
   let(:file) { StringIO.new(IO.binread("spec/fixtures/landscape.jpg"), 'rb') }
-  let(:base64_data) { Base64.encode64(file.read) }
+  let(:base64_data) { "data:image/gif;base64," + Base64.encode64(file.read) }
   let(:hostname) { "example.com" }
 
   before do
@@ -25,9 +25,9 @@ describe Attache::Upload do
   end
 
   context "uploading with base64" do
-    let(:params) { Hash(file: filename, data: base64_data) }
+    let(:params) { Hash(file: filename, type: 'base64') }
 
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', "HTTP_HOST" => hostname) } }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', :input => base64_data, "HTTP_HOST" => hostname) } }
 
     it 'should respond successfully with json' do
       code, headers, body = subject.call
