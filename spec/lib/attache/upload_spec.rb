@@ -24,7 +24,7 @@ describe Attache::Upload do
     expect(code).to eq 200
   end
 
-  context "uploading with bash64" do
+  context "uploading with base64" do
     let(:params) { Hash(data: base64_data) }
 
     subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', "HTTP_HOST" => hostname) } }
