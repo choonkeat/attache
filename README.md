@@ -148,7 +148,8 @@ Users will upload files directly into the `attache` server from their browser, b
 or
 
 > ```
-> PUT /upload?data=data:image/jpeg;base64,/9j/4QBiR....
+> PUT /upload?file=image123.jpg&type=base64
+> body => data=data:image/jpeg;base64,/9j/4QBiR....
 > ```
 
 The main app front end will receive a unique `path` for each uploaded file - the only information to store in the main app database.
