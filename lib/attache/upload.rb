@@ -1,4 +1,3 @@
-require 'pry'
 class Attache::Upload < Attache::Base
   def initialize(app)
     @app = app
