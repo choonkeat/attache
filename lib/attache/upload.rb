@@ -1,3 +1,4 @@
+require 'pry'
 class Attache::Upload < Attache::Base
   def initialize(app)
     @app = app
@@ -15,14 +16,9 @@ class Attache::Upload < Attache::Base
         if params.has_key? 'data'
 
           base_64_encoded_data = params['data']
-          data_index = base_64_encoded_data.index('base64') + 7
-          data_format = base_64_encoded_data.match(/image\/(\w+)/)[1]
-          filedata = base_64_encoded_data[data_index..-1]
-          decoded_image = Base64.decode64(filedata)
+          decoded_image = Base64.decode64(base_64_encoded_data)
 
-          filename = "#{Time.now.to_i}.#{data_format}"
-
-          relpath = generate_relpath(Attache::Upload.sanitize filename)
+          relpath = generate_relpath(Attache::Upload.sanitize params['file'])
           cachekey = File.join(request_hostname(env), relpath)
 
           bytes_wrote = Attache.cache.write(cachekey, StringIO.new(decoded_image))
