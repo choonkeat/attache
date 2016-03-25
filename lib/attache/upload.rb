@@ -12,17 +12,12 @@ class Attache::Upload < Attache::Base
         params   = request.params
         return config.unauthorized unless config.authorized?(params)
 
-        if params['type'] == 'base64'
-          split_encoded = split_base64(request.body.read)
-          relpath = generate_relpath(Attache::Upload.sanitize params['file'])
-          cachekey = File.join(request_hostname(env), relpath)
-          bytes_wrote = Attache.cache.write(cachekey, StringIO.new(split_encoded[:data]))
-        else
-          relpath = generate_relpath(Attache::Upload.sanitize params['file'])
-          cachekey = File.join(request_hostname(env), relpath)
-          bytes_wrote = Attache.cache.write(cachekey, request.body)
-        end
+        relpath = generate_relpath(Attache::Upload.sanitize params['file'])
+        cachekey = File.join(request_hostname(env), relpath)
 
+        dataprefix = request.body.read(5).tap { request.body.rewind }
+        request_body = (dataprefix == 'data:' ? StringIO.new(split_base64(request.body.read)[:data]) : request.body)
+        bytes_wrote = Attache.cache.write(cachekey, request_body)
         if bytes_wrote == 0
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         else

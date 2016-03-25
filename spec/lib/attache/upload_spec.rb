@@ -6,6 +6,7 @@ describe Attache::Upload do
   let(:params) { {} }
   let(:filename) { "Exãmple %#{rand} %20.gif" }
   let(:file) { StringIO.new(IO.binread("spec/fixtures/landscape.jpg"), 'rb') }
+  let(:request_input) { file }
   let(:base64_data) { "data:image/gif;base64," + Base64.encode64(file.read) }
   let(:hostname) { "example.com" }
 
@@ -24,28 +25,10 @@ describe Attache::Upload do
     expect(code).to eq 200
   end
 
-  context "uploading with base64" do
-    let(:params) { Hash(file: filename, type: 'base64') }
-
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', :input => base64_data, "HTTP_HOST" => hostname) } }
-
-    it 'should respond successfully with json' do
-      code, headers, body = subject.call
-      expect(code).to eq(200)
-      expect(headers['Content-Type']).to eq('text/json')
-
-      JSON.parse(body.join('')).tap do |json|
-        expect(json).to be_has_key('path')
-        expect(json['geometry']).to eq('4x3')
-      end
-    end
-
-  end
-
   context "uploading" do
     let(:params) { Hash(file: filename) }
 
-    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', input: file, "HTTP_HOST" => hostname) } }
+    subject { proc { middleware.call Rack::MockRequest.env_for('http://' + hostname + '/upload?' + params.collect {|k,v| "#{CGI.escape k.to_s}=#{CGI.escape v.to_s}"}.join('&'), method: 'PUT', input: request_input, "HTTP_HOST" => hostname) } }
 
     it 'should respond successfully with json' do
       code, headers, body = subject.call
@@ -63,6 +46,20 @@ describe Attache::Upload do
       relpath = json['path']
       expect(relpath).to end_with(Attache::Upload.sanitize params[:file])
       expect(Attache.cache.read(hostname + '/' + relpath).tap(&:close)).to be_kind_of(File)
+    end
+
+    context 'base64' do
+      let!(:request_input) { StringIO.new("data:image/gif;base64," + Base64.encode64(file.read)) }
+
+      it 'should respond identically as when uploading binary' do
+        code, headers, body = subject.call
+        expect(code).to eq(200)
+        expect(headers['Content-Type']).to eq('text/json')
+        JSON.parse(body.join('')).tap do |json|
+          expect(json).to be_has_key('path')
+          expect(json['geometry']).to eq('4x3')
+        end
+      end
     end
 
     context 'save fail locally' do
