@@ -9,7 +9,7 @@ class Attache::Upload < Attache::Base
       case env['REQUEST_METHOD']
       when 'POST', 'PUT', 'PATCH'
         request  = Rack::Request.new(env)
-        params   = request.params
+        params   = request.GET # stay away from parsing body
         return config.unauthorized unless config.authorized?(params)
 
         relpath = generate_relpath(Attache::Upload.sanitize params['file'])
