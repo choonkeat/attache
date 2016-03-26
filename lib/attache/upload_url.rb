@@ -17,6 +17,8 @@ class Attache::UploadUrl < Attache::Base
 
       if params['url']
         file, filename = download_file(params['url'])
+        filename = "index" if filename == '/'
+
         env['CONTENT_TYPE'] = content_type_of(file.path)
         env['rack.request.query_hash'] = (env['rack.request.query_hash'] || {}).merge('file' => filename)
         env['rack.input'] = file.open
@@ -33,6 +35,7 @@ class Attache::UploadUrl < Attache::Base
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true if uri.scheme == 'https'
     req = Net::HTTP::Get.new(uri.request_uri)
+    req.initialize_http_header({"User-Agent" => ENV['USER_AGENT']}) if ENV['USER_AGENT']
     req.basic_auth(uri.user, uri.password) if uri.user || uri.password
     res = http.request(req)
     case res.code
