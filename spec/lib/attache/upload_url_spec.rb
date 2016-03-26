@@ -52,5 +52,87 @@ describe Attache::UploadUrl do
         end
       end
     end
+
+    context 'data uri' do
+      context 'base64-encoded image' do
+        let(:file) { StringIO.new(IO.binread("spec/fixtures/landscape.jpg"), 'rb') }
+        let(:params) { Hash(url: "data:image/gif;base64," + Base64.encode64(file.read)) }
+
+        it 'should respond identically as when uploading binary' do
+          code, headers, body = subject.call
+          puts [code, headers, body].inspect
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['geometry']).to eq('4x3')
+            expect(json['bytes']).to eq(425)
+          end
+        end
+      end
+
+      # various Data URI permutations
+      # https://developer.mozilla.org/en-US/docs/Web/HTTP/data_URIs
+      context 'simple text/plain data' do
+        let(:params) { Hash(url: "data:,Hello%2C%20World!") }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          puts [code, headers, body].inspect
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/plain')
+            expect(json['bytes']).to eq(13)
+          end
+        end
+      end
+
+      context "base64-encoded version of the above" do
+        let(:params) { Hash(url: "data:text/plain;base64,SGVsbG8sIFdvcmxkIQ%3D%3D") }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/plain')
+            expect(json['bytes']).to eq(13)
+          end
+        end
+      end
+
+      context "An HTML document with <html><body><h1>Hello, World!</h1></body></html>" do
+        let(:params) { Hash(url: "data:text/html,%3Chtml%3E%3Cbody%3E%3Ch1%3EHello,%20World!%3C/h1%3E%3C/body%3E%3C/html%3E") }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/html')
+            expect(json['bytes']).to eq(48)
+          end
+        end
+      end
+
+      context "An HTML document that executes a JavaScript alert" do
+        let(:params) { Hash(url: "data:text/html,<script>alert('hi');</script>") }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/html')
+            expect(json['bytes']).to eq(29)
+          end
+        end
+      end
+    end
   end
 end

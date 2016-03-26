@@ -16,12 +16,12 @@ class Attache::UploadUrl < Attache::Base
       return config.unauthorized unless config.authorized?(params)
 
       if params['url']
-        file, filename = download_file(params['url'])
+        file, filename, content_type = download_file(params['url'])
         filename = "index" if filename == '/'
 
-        env['CONTENT_TYPE'] = content_type_of(file.path)
+        env['CONTENT_TYPE'] = content_type || content_type_of(file.path)
         env['rack.request.query_hash'] = (env['rack.request.query_hash'] || {}).merge('file' => filename)
-        env['rack.input'] = file.open
+        env['rack.input'] = file
       end
     end
     @app.call(env)
@@ -31,6 +31,18 @@ class Attache::UploadUrl < Attache::Base
   def download_file(url, depth = 0)
     raise Net::HTTPError, "Too many redirects" if depth > MAX_DEPTH
     Attache.logger.info "Upload GET #{url}"
+
+    if url.match /\Adata:([^;,]+|)(;base64|),/
+      # data:[<mediatype>][;base64],<data>
+      # http://tools.ietf.org/html/rfc2397
+
+      data = URI.decode(url[url.index(',')+1..-1])
+      data = Base64.decode64(data) if $2 == ';base64'
+      content_type = ($1 == '' ? "text/plain" : $1)
+      filename = "data.#{content_type.gsub(/\W+/, '.')}"
+      return [StringIO.new(data), filename, content_type]
+    end
+
     uri = uri.kind_of?(URI::Generic) ? url : URI.parse(url)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true if uri.scheme == 'https'
@@ -46,10 +58,14 @@ class Attache::UploadUrl < Attache::Base
       f = Tempfile.new(["upload_url", File.extname(uri.path)])
       f.write(res.body)
       f.close
-      [f, File.basename(uri.path)]
+      [f.tap(&:open), File.basename(uri.path)]
 
     else
       raise Net::HTTPError, "Failed #{res.code}"
     end
+  rescue Exception
+    puts $!
+    puts $@
+    raise
   end
 end
