@@ -1,6 +1,7 @@
 require 'attache'
 
 use Attache::Delete
+use Attache::UploadUrl
 use Attache::Upload
 use Attache::Download
 use Attache::Tus::Upload

@@ -156,6 +156,14 @@ The main app front end will receive a unique `path` for each uploaded file - the
 > ```
 > json response from attache after upload.
 
+##### Upload by url
+
+> ```
+> GET /upload_url?url=https://example.com/logo.png
+> ```
+
+Attache will download the file from `url` supplied and uploads it through the regular `/upload` handler. So be expecting the same json response after upload. works with `GET`, `POST`, `PUT`.
+
 #### Download
 
 Whenever the main app wants to display the uploaded file, constrained to a particular size, it will use a helper method provided by the `attache` lib. e.g. `embed_attache(path)` which will generate the necessary, barebones markup.
