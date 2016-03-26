@@ -63,9 +63,5 @@ class Attache::UploadUrl < Attache::Base
     else
       raise Net::HTTPError, "Failed #{res.code}"
     end
-  rescue Exception
-    puts $!
-    puts $@
-    raise
   end
 end

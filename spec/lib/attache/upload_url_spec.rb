@@ -60,7 +60,6 @@ describe Attache::UploadUrl do
 
         it 'should respond identically as when uploading binary' do
           code, headers, body = subject.call
-          puts [code, headers, body].inspect
           expect(code).to eq(200)
           expect(headers['Content-Type']).to eq('text/json')
           JSON.parse(body.join('')).tap do |json|
@@ -78,7 +77,6 @@ describe Attache::UploadUrl do
 
         it 'should decode' do
           code, headers, body = subject.call
-          puts [code, headers, body].inspect
           expect(code).to eq(200)
           expect(headers['Content-Type']).to eq('text/json')
           JSON.parse(body.join('')).tap do |json|
