@@ -15,9 +15,7 @@ class Attache::Upload < Attache::Base
         relpath = generate_relpath(Attache::Upload.sanitize params['file'])
         cachekey = File.join(request_hostname(env), relpath)
 
-        dataprefix = request.body.read(5).tap { request.body.rewind }
-        request_body = (dataprefix == 'data:' ? StringIO.new(split_base64(request.body.read)[:data]) : request.body)
-        bytes_wrote = Attache.cache.write(cachekey, request_body)
+        bytes_wrote = Attache.cache.write(cachekey, cleaned_up(request.body))
         if bytes_wrote == 0
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         else
@@ -43,15 +41,18 @@ class Attache::Upload < Attache::Base
 
   private
 
-  def split_base64(encoded)
-    encoded.gsub!(/\n/,'')
-    if encoded.match(%r{^data:(.*?);(.*?),(.*)$})
-      {
-        type: $1,
-        encoder: $2,
-        data: Base64.decode64($3),
-        extension: $1.split('/')[1]
-      }
+  def cleaned_up(io)
+    prefix = io.read(80).tap { io.rewind }
+    case prefix
+    when /\Adata:([^;,]+|)(;base64|),/
+      # data:[<mediatype>][;base64],<data>
+      # http://tools.ietf.org/html/rfc2397
+      io.read(prefix.index(',')+1) # discard metadata
+      data = URI.decode(io.read)
+      data = Base64.decode64(data) if $2 == ';base64'
+      StringIO.new(data)
+    else
+      io
     end
   end
 end
