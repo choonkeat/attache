@@ -15,7 +15,7 @@ class Attache::Upload < Attache::Base
         relpath = generate_relpath(Attache::Upload.sanitize params['file'])
         cachekey = File.join(request_hostname(env), relpath)
 
-        bytes_wrote = Attache.cache.write(cachekey, cleaned_up(request.body))
+        bytes_wrote = Attache.cache.write(cachekey, request.body)
         if bytes_wrote == 0
           return [500, config.headers_with_cors.merge('X-Exception' => 'Local file failed'), []]
         else
@@ -37,22 +37,5 @@ class Attache::Upload < Attache::Base
 
   def self.sanitize(filename)
     filename.to_s.gsub(/\%/, '_')
-  end
-
-  private
-
-  def cleaned_up(io)
-    prefix = io.read(80).tap { io.rewind }
-    case prefix
-    when /\Adata:([^;,]+|)(;base64|),/
-      # data:[<mediatype>][;base64],<data>
-      # http://tools.ietf.org/html/rfc2397
-      io.read(prefix.index(',')+1) # discard metadata
-      data = URI.decode(io.read)
-      data = Base64.decode64(data) if $2 == ';base64'
-      StringIO.new(data)
-    else
-      io
-    end
   end
 end
