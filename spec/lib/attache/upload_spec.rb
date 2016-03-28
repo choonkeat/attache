@@ -37,6 +37,7 @@ describe Attache::Upload do
       JSON.parse(body.join('')).tap do |json|
         expect(json).to be_has_key('path')
         expect(json['geometry']).to eq('4x3')
+        expect(json['bytes']).to eq(425)
       end
     end
 
@@ -48,16 +49,98 @@ describe Attache::Upload do
       expect(Attache.cache.read(hostname + '/' + relpath).tap(&:close)).to be_kind_of(File)
     end
 
+    # does not support base64/data uri here
+    # see upload_url.rb
     context 'base64' do
-      let!(:request_input) { StringIO.new("data:image/gif;base64," + Base64.encode64(file.read)) }
+      context 'base64-encoded image' do
+        let!(:request_input) { StringIO.new("data:image/gif;base64," + Base64.encode64(file.read)) }
 
-      it 'should respond identically as when uploading binary' do
+        it 'should respond identically as when uploading binary' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['geometry']).to eq(nil)
+            expect(json['content_type']).to eq('text/plain')
+          end
+        end
+      end
+
+      # various Data URI permutations
+      # https://developer.mozilla.org/en-US/docs/Web/HTTP/data_URIs
+      context 'simple text/plain data' do
+        let!(:request_input) { StringIO.new "data:,Hello%2C%20World!" }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/plain')
+            expect(json['bytes']).to eq(23)
+          end
+        end
+      end
+
+      context "base64-encoded version of the above" do
+        let!(:request_input) { StringIO.new "data:text/plain;base64,SGVsbG8sIFdvcmxkIQ%3D%3D" }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/plain')
+            expect(json['bytes']).to eq(47)
+          end
+        end
+      end
+
+      context "An HTML document with <html><body><h1>Hello, World!</h1></body></html>" do
+        let!(:request_input) { StringIO.new "data:text/html,%3Chtml%3E%3Cbody%3E%3Ch1%3EHello,%20World!%3C/h1%3E%3C/body%3E%3C/html%3E" }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/plain')
+            expect(json['bytes']).to eq(89)
+          end
+        end
+      end
+
+      context "An HTML document that executes a JavaScript alert" do
+        let!(:request_input) { StringIO.new "data:text/html,<script>alert('hi');</script>" }
+
+        it 'should decode' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            expect(json).to be_has_key('path')
+            expect(json['content_type']).to eq('text/html')
+            expect(json['bytes']).to eq(44)
+          end
+        end
+      end
+    end
+
+    context 'plain text with data: prefix' do
+      let!(:file) { StringIO.new(IO.binread("spec/fixtures/sample.txt"), 'rb') }
+
+      it 'should not be mangled by Base64 decoding' do
         code, headers, body = subject.call
         expect(code).to eq(200)
         expect(headers['Content-Type']).to eq('text/json')
         JSON.parse(body.join('')).tap do |json|
           expect(json).to be_has_key('path')
-          expect(json['geometry']).to eq('4x3')
+          expect(json['content_type']).to eq('text/plain')
+          expect(json['bytes']).to eq(20)
         end
       end
     end

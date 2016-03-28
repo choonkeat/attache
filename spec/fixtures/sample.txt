@@ -1,1 +1,1 @@
-hello
+data:not a data uri
