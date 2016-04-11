@@ -116,7 +116,7 @@ describe Attache::Download do
         let(:geometry) { CGI.escape('original') }
 
         it 'should send original file' do
-          expect_any_instance_of(middleware.class).not_to receive(:make_thumbnail_for)
+          expect_any_instance_of(middleware.class).not_to receive(:get_thumbnail_file)
           code, headers, body = subject.call
           response_content = ''
           body.each {|p| response_content += p }

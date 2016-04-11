@@ -5,6 +5,7 @@ class Attache::Download < Attache::Base
 
   def initialize(app)
     @app = app
+    @mutexes = {}
   end
 
   def _call(env, config)
@@ -23,52 +24,20 @@ class Attache::Download < Attache::Base
           return [302, headers, []]
         end
 
-        file = begin
-          cachekey = File.join(request_hostname(env), relpath)
-          Attache.cache.fetch(cachekey) do
-            name_with_vhost_pairs = vhosts.inject({}) { |sum,(k,v)| (v ? sum.merge(k => v) : sum) }
-            get_first_result_present_async(name_with_vhost_pairs.collect {|name, vhost|
-              lambda { Thread.handle_interrupt(BasicObject => :on_blocking) {
-                begin
-                  Attache.logger.info "[POOL] looking for #{name} #{relpath}..."
-                  vhost.storage_get(relpath: relpath).tap do |v|
-                    Attache.logger.info "[POOL] found #{name} #{relpath} = #{v.inspect}"
-                  end
-                rescue Exception
-                  Attache.logger.error $!
-                  Attache.logger.error $@
-                  Attache.logger.info "[POOL] not found #{name} #{relpath}"
-                  nil
-                end
-              } }
-            })
-          end
-        rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
-          Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
-          nil
-        end
-
-        unless file && file.try(:size).to_i > 0
-          return [404, config.download_headers, []]
-        end
-
         thumbnail = case geometry
-        when 'original', *vhosts.keys
-          file
-        else
-          extension = basename.split(/\W+/).last
-          make_thumbnail_for(file.tap(&:close), geometry, extension, basename)
-        end
+          when 'original', *vhosts.keys
+            get_original_file(relpath, vhosts, env)
+          else
+            get_thumbnail_file(geometry, basename, relpath, vhosts, env)
+          end
+
+        return [404, config.download_headers, []] if thumbnail.try(:size).to_i == 0
 
         headers = {
           'Content-Type' => content_type_of(thumbnail.path),
         }.merge(config.download_headers)
 
-        [200, headers, rack_response_body_for(thumbnail)].tap do
-          unless file == thumbnail # cleanup
-            File.unlink(thumbnail.path) rescue Errno::ENOENT
-          end
-        end
+        [200, headers, rack_response_body_for(thumbnail)]
       end
     else
       @app.call(env)
@@ -86,11 +55,55 @@ class Attache::Download < Attache::Base
       yield dirname, geometry, basename, relpath
     end
 
-    def make_thumbnail_for(file, geometry, extension, basename)
-      Attache.logger.info "[POOL] new job"
-      RESIZE_JOB_POOL.with do |job|
-        job.perform(file, geometry, extension, basename)
+    def synchronize(key, &block)
+      mutex = @mutexes[key] ||= Mutex.new
+      mutex.synchronize(&block)
+    ensure
+      @mutexes.delete(key)
+    end
+
+    def get_thumbnail_file(geometry, basename, relpath, vhosts, env)
+      cachekey = File.join(request_hostname(env), relpath, geometry)
+      synchronize(cachekey) do
+        tempfile = nil
+        Attache.cache.fetch(cachekey) do
+          Attache.logger.info "[POOL] new job"
+          tempfile = RESIZE_JOB_POOL.with do |job|
+            job.perform(geometry, basename, relpath, vhosts, env) do
+              # opens up possibility that job implementation
+              # does not require we download original file prior
+              get_original_file(relpath, vhosts, env)
+            end
+          end
+        end.tap { File.unlink(tempfile.path) if tempfile.try(:path) }
       end
+    end
+
+    def get_original_file(relpath, vhosts, env)
+      cachekey = File.join(request_hostname(env), relpath)
+      synchronize(cachekey) do
+        Attache.cache.fetch(cachekey) do
+          name_with_vhost_pairs = vhosts.inject({}) { |sum,(k,v)| (v ? sum.merge(k => v) : sum) }
+          get_first_result_present_async(name_with_vhost_pairs.collect {|name, vhost|
+            lambda { Thread.handle_interrupt(BasicObject => :on_blocking) {
+              begin
+                Attache.logger.info "[POOL] looking for #{name} #{relpath}..."
+                vhost.storage_get(relpath: relpath).tap do |v|
+                  Attache.logger.info "[POOL] found #{name} #{relpath} = #{v.inspect}"
+                end
+              rescue Exception
+                Attache.logger.error $!
+                Attache.logger.error $@
+                Attache.logger.info "[POOL] not found #{name} #{relpath}"
+                nil
+              end
+            } }
+          })
+        end
+      end
+    rescue Exception # Errno::ECONNREFUSED, OpenURI::HTTPError, Excon::Errors, Fog::Errors::Error
+      Attache.logger.error "ERROR REFERER #{env['HTTP_REFERER'].inspect}"
+      nil
     end
 
     # Ref https://gist.github.com/sferik/39831f34eb87686b639c#gistcomment-1652888
