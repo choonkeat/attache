@@ -1,8 +1,12 @@
 require 'digest/sha1'
+require 'stringio'
 
 class Attache::ResizeJob
-  def perform(closed_file, target_geometry_string, extension, basename)
-    t = Time.now
+  def perform(target_geometry_string, basename, relpath, vhosts, env, t = Time.now)
+    closed_file = yield
+    return StringIO.new if closed_file.try(:size).to_i == 0
+
+    extension = basename.split(/\W+/).last
     Attache.logger.info "[POOL] start"
     return make_nonimage_preview(closed_file, basename) if ['pdf', 'txt'].include?(extension.to_s.downcase)
 
