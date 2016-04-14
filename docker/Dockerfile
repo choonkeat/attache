@@ -9,7 +9,8 @@ USER app
 RUN gem install --no-ri --no-rdoc attache --version '>= 2.2.1'
 RUN mkdir -p /app/src
 WORKDIR /app/src
-RUN echo 'gem "attache"' > Gemfile && bundle
+RUN echo 'source "https://rubygems.org"' > Gemfile
+RUN echo 'gem "attache"'                 >> Gemfile && bundle
 
 RUN wget http://johnvansickle.com/ffmpeg/releases/ffmpeg-release-32bit-static.tar.xz
 RUN tar xvf ffmpeg-release-32bit-static.tar.xz
