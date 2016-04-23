@@ -11,7 +11,6 @@ describe Attache::Download do
   let(:remote_url) { "http://example.com/image.jpg" }
 
   before do
-    allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
     allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
   end
 
@@ -53,7 +52,7 @@ describe Attache::Download do
 
       context 'with cloud storage configured' do
         before do
-          allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
+          allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage, directories: Struct.new(:key, :files)))
           allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
         end
 
