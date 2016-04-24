@@ -1,3 +1,5 @@
+ENV['VHOST'] = '{"0.0.0.0":{}}'
+
 require 'attache.rb'
 require 'sucker_punch/testing/inline'
 
@@ -92,3 +94,8 @@ RSpec.configure do |config|
   Kernel.srand config.seed
 =end
 end
+
+Attache.logger = Logger.new("/dev/null")
+Paperclip.options[:log] = false
+Sidekiq::Logging.logger = nil
+SuckerPunch.logger = nil

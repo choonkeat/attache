@@ -16,6 +16,10 @@ class Attache::Download < Attache::Base
       vhosts[ENV.fetch('BACKUP_GEOMETRY') { 'backup' }] = config.backup
 
       parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
+        unless config.try(:geometry_whitelist).blank? || config.geometry_whitelist.include?(geometry)
+          return [415, config.download_headers, ["#{geometry} is not supported"]]
+        end
+
         if vhost = vhosts[geometry]
           headers = vhost.download_headers.merge({
                       'Location' => vhost.storage_url(relpath: relpath),

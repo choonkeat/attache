@@ -5,6 +5,9 @@
 "google.lvh.me:9292":
   "SECRET_KEY": CHANGEME                         # this is the shared secret between your app and this attache server
   "REMOTE_DIR": CHANGEME                         # this is the root directory to use in the `bucket`; omit to use root
+  "GEOMETRY_WHITELIST":                          # this limits the type of `geometry` we resize to; optional
+    - "100x100"
+    - "1024>"
   "FOG_CONFIG":                                  #
     "provider": Google                           # refer to `fog.io/storage` documentation
     "google_storage_access_key_id": CHANGEME     #

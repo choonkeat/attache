@@ -9,7 +9,6 @@ describe Attache::Delete do
   let(:file) { StringIO.new(IO.binread("spec/fixtures/transparent.gif"), 'rb') }
 
   before do
-    allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
     allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
     allow_any_instance_of(Attache::VHost).to receive(:secret_key).and_return(nil)
     allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(nil)

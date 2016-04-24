@@ -11,7 +11,6 @@ describe Attache::Download do
   let(:remote_url) { "http://example.com/image.jpg" }
 
   before do
-    allow(Attache).to receive(:logger).and_return(Logger.new('/dev/null'))
     allow(Attache).to receive(:localdir).and_return(Dir.tmpdir) # forced, for safety
   end
 
@@ -53,7 +52,7 @@ describe Attache::Download do
 
       context 'with cloud storage configured' do
         before do
-          allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage))
+          allow_any_instance_of(Attache::VHost).to receive(:storage).and_return(double(:storage, directories: Struct.new(:key, :files)))
           allow_any_instance_of(Attache::VHost).to receive(:bucket).and_return(double(:bucket))
         end
 
@@ -122,6 +121,37 @@ describe Attache::Download do
           body.each {|p| response_content += p }
           original_content = file.tap(&:rewind).read
           expect(response_content).to eq(original_content)
+        end
+      end
+
+      context 'geometry_whitelist is present' do
+        let(:geometry_whitelist) { ['100x100'] }
+
+        before do
+          allow(middleware).to receive(:vhost_for).and_return(double(:vhost,
+            geometry_whitelist: geometry_whitelist,
+            storage: nil,
+            backup: nil,
+            download_headers: {}))
+        end
+
+        context 'geometry is whitelisted' do
+          let(:geometry) { geometry_whitelist.sample }
+
+          it 'should be allowed' do
+            code, headers, body = subject.call
+            expect(code).to eq(200)
+          end
+        end
+
+        context 'geometry is NOT whitelisted' do
+          let(:geometry) { '999x999' }
+
+          it 'should NOT be allowed' do
+            code, headers, body = subject.call
+            expect(code).to eq(415)
+            expect(body).to eq(["#{geometry} is not supported"])
+          end
         end
       end
 
