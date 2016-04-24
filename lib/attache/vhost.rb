@@ -6,12 +6,15 @@ class Attache::VHost
                 :storage,
                 :download_headers,
                 :headers_with_cors,
+                :geometry_whitelist,
                 :env
 
   def initialize(hash)
     self.env = hash || {}
     self.remotedir  = env['REMOTE_DIR'] # nil means no fixed top level remote directory, and that's fine.
     self.secret_key = env['SECRET_KEY'] # nil means no auth check; anyone can upload a file
+    self.geometry_whitelist = env['GEOMETRY_WHITELIST'] # nil means everything is acceptable
+
     if env['FOG_CONFIG']
       self.bucket       = env['FOG_CONFIG'].fetch('bucket')
       self.storage      = Fog::Storage.new(env['FOG_CONFIG'].except('bucket').symbolize_keys)

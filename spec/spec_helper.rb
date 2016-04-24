@@ -1,3 +1,5 @@
+ENV['VHOST'] = '{"0.0.0.0":{}}'
+
 require 'attache.rb'
 require 'sucker_punch/testing/inline'
 

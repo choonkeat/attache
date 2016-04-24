@@ -124,6 +124,37 @@ describe Attache::Download do
         end
       end
 
+      context 'geometry_whitelist is present' do
+        let(:geometry_whitelist) { ['100x100'] }
+
+        before do
+          allow(middleware).to receive(:vhost_for).and_return(double(:vhost,
+            geometry_whitelist: geometry_whitelist,
+            storage: nil,
+            backup: nil,
+            download_headers: {}))
+        end
+
+        context 'geometry is whitelisted' do
+          let(:geometry) { geometry_whitelist.sample }
+
+          it 'should be allowed' do
+            code, headers, body = subject.call
+            expect(code).to eq(200)
+          end
+        end
+
+        context 'geometry is NOT whitelisted' do
+          let(:geometry) { '999x999' }
+
+          it 'should NOT be allowed' do
+            code, headers, body = subject.call
+            expect(code).to eq(415)
+            expect(body).to eq(["#{geometry} is not supported"])
+          end
+        end
+      end
+
       context 'rendering' do
         context 'non image' do
           let(:file) { StringIO.new(IO.binread("spec/fixtures/sample.txt"), 'rb') }
