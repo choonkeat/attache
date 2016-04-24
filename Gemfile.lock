@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    attache (2.2.1)
+    attache (2.3.0)
       activesupport
       celluloid (< 0.17)
       connection_pool (~> 2.2)
@@ -287,4 +287,4 @@ DEPENDENCIES
   shoulda (~> 3.5)
 
 BUNDLED WITH
-   1.10.6
+   1.11.2

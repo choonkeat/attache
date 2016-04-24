@@ -13,8 +13,8 @@ RUN tar xvf ffmpeg-release-32bit-static.tar.xz
 ENV PATH "$PATH:/app/src/ffmpeg-2.8.3-32bit-static"
 
 RUN echo 'source "https://rubygems.org"' > Gemfile
-RUN echo 'gem "attache", ">= 2.2.1"'     >> Gemfile && bundle
-RUN gem install --no-ri --no-rdoc attache --version '>= 2.2.1'
+RUN echo 'gem "attache", ">= 2.3.0"'     >> Gemfile && bundle
+RUN gem install --no-ri --no-rdoc attache --version '>= 2.3.0'
 
 EXPOSE 5000
 CMD ["attache", "start", "-c", "web=1"]
