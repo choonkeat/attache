@@ -52,7 +52,7 @@ class Attache::ResizeJob
     end
 
     def thumbnail_for(closed_file:, target_geometry_string:, extension:, max: 2048)
-      thumbnail = Paperclip::Thumbnail.new(closed_file, geometry: target_geometry_string, format: extension)
+      thumbnail = Paperclip::Thumbnail.new(closed_file, geometry: target_geometry_string, format: extension, convert_options: '-strip -interlace Plane')
       current_geometry = current_geometry_for(thumbnail)
       target_geometry = Paperclip::GeometryParser.new(target_geometry_string).make
       if target_geometry.larger <= max && current_geometry.larger > max
