@@ -37,6 +37,7 @@ describe Attache::Upload do
         expect(json).to be_has_key('path')
         expect(json['geometry']).to eq('4x3')
         expect(json['bytes']).to eq(425)
+        expect(json['signature']).to eq(nil)
       end
     end
 
@@ -215,6 +216,17 @@ describe Attache::Upload do
         it 'should respond with success' do
           code, headers, body = subject.call
           expect(code).to eq(200)
+        end
+
+        it 'should respond successfully with json with signature' do
+          code, headers, body = subject.call
+          expect(code).to eq(200)
+          expect(headers['Content-Type']).to eq('text/json')
+          JSON.parse(body.join('')).tap do |json|
+            json_without_signature = json.reject {|k,v| k == 'signature' }
+            generated_signature = OpenSSL::HMAC.hexdigest(digest, secret_key, json_without_signature.sort.collect {|k,v| "#{k}=#{v}" }.join('&'))
+            expect(json['signature']).to eq(generated_signature)
+          end
         end
 
         context 'expired' do

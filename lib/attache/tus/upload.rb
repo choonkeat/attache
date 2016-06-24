@@ -39,7 +39,7 @@ class Attache::Tus::Upload < Attache::Base
 
           [200,
             tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey, relpath, config)),
-            [json_of(relpath, cachekey)],
+            [json_of(relpath, cachekey, config)],
           ]
         else
           [400, tus.headers_with_cors('X-Exception' => 'Bad headers'), []]
@@ -53,7 +53,7 @@ class Attache::Tus::Upload < Attache::Base
         cachekey = File.join(request_hostname(env), relpath)
         [200,
           tus.headers_with_cors({'Content-Type' => 'text/json'}, offset: current_offset(cachekey, relpath, config)),
-          [json_of(relpath, cachekey)],
+          [json_of(relpath, cachekey, config)],
         ]
 
       when 'GET'

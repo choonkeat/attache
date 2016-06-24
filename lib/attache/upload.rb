@@ -24,7 +24,7 @@ class Attache::Upload < Attache::Base
 
         config.storage_create(relpath: relpath, cachekey: cachekey) if config.storage && config.bucket
 
-        [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [json_of(relpath, cachekey)]]
+        [200, config.headers_with_cors.merge('Content-Type' => 'text/json'), [json_of(relpath, cachekey, config)]]
       when 'OPTIONS'
         [200, config.headers_with_cors, []]
       else
