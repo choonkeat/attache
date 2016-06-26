@@ -60,14 +60,19 @@ class Attache::Base
     File.join(*SecureRandom.hex.scan(/\w\w/), basename)
   end
 
-  def json_of(relpath, cachekey)
+  def json_of(relpath, cachekey, vhost)
     filepath = path_of(cachekey)
-    {
+    json = {
       path:         relpath,
       content_type: content_type_of(filepath),
       geometry:     geometry_of(filepath),
       bytes:        filesize_of(filepath),
-    }.to_json
+    }
+    if vhost && vhost.secret_key
+      content = json.sort.collect {|k,v| "#{k}=#{v}" }.join('&')
+      json['signature'] = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), vhost.secret_key, content)
+    end
+    json.to_json
   end
 
 end
