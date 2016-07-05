@@ -53,5 +53,26 @@ describe Attache::ResizeJob do
         }
       end
     end
+
+    context 'convert_options for jpg, jpeg' do
+      let(:jpg_path) { "spec/fixtures/landscape.jpg" }
+      let(:thumbnail) {
+        job.send(:thumbnail_for, closed_file: File.new(jpg_path),
+                               target_geometry_string: '1x1>',
+                               extension: %w(jpg jpeg).sample)
+      }
+
+      it { expect(thumbnail.convert_options).to eq(%w(-interlace Plane)) }
+    end
+
+    context 'convert_options for other file extensions' do
+      let(:thumbnail) {
+        job.send(:thumbnail_for, closed_file: File.new(original_path),
+                               target_geometry_string: '1x1>',
+                               extension: %w(png gif tiff bmp).sample)
+      }
+
+      it { expect(thumbnail.convert_options).to be_nil }
+    end
   end
 end
