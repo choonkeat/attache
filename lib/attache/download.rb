@@ -1,4 +1,8 @@
+require 'base64'
 require 'connection_pool'
+require 'json'
+require 'rack'
+require 'openssl'
 
 class Attache::Download < Attache::Base
   RESIZE_JOB_POOL = ConnectionPool.new(JSON.parse(ENV.fetch('RESIZE_POOL') { '{ "size": 2, "timeout": 60 }' }).symbolize_keys) { Attache::ResizeJob.new }
@@ -15,12 +19,10 @@ class Attache::Download < Attache::Base
       vhosts[ENV.fetch('REMOTE_GEOMETRY') { 'remote' }] = config.storage && config.bucket && config
       vhosts[ENV.fetch('BACKUP_GEOMETRY') { 'backup' }] = config.backup
 
-      parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, geometry, basename, relpath|
-        unless config.try(:geometry_whitelist).blank? || config.geometry_whitelist.include?(geometry)
-          return [415, config.download_headers, ["#{geometry} is not supported"]]
-        end
+      parse_path_info(env['PATH_INFO']['/view/'.length..-1]) do |dirname, instruction_string, hmac, basename, relpath|
+        return config.unauthorized unless authorized?(config, instruction_string, hmac)
 
-        if vhost = vhosts[geometry]
+        if vhost = vhosts[instruction_string]
           headers = vhost.download_headers.merge({
                       'Location' => vhost.storage_url(relpath: relpath),
                       'Cache-Control' => 'private, no-cache',
@@ -28,11 +30,11 @@ class Attache::Download < Attache::Base
           return [302, headers, []]
         end
 
-        thumbnail = case geometry
+        thumbnail = case instruction_string
           when 'original', *vhosts.keys
             get_original_file(relpath, vhosts, env)
           else
-            get_thumbnail_file(geometry, basename, relpath, vhosts, env)
+            get_thumbnail_file(instruction_string, basename, relpath, vhosts, env)
           end
 
         return [404, config.download_headers, []] if thumbnail.try(:size).to_i == 0
@@ -50,13 +52,24 @@ class Attache::Download < Attache::Base
 
   private
 
-    def parse_path_info(geometrypath)
-      parts = geometrypath.split('/')
-      basename = CGI.unescape parts.pop
-      geometry = CGI.unescape parts.pop
-      dirname  = parts.join('/')
-      relpath  = File.join(dirname, basename)
-      yield dirname, geometry, basename, relpath
+    def authorized?(config, instruction_string, hmac)
+      # TODO: need to do something to _ensure_ a public key along with this change?
+      our_hmac = OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new('sha1'), config.secret_key.to_s, instruction_string)
+
+      Rack::Utils.secure_compare(hmac, our_hmac)
+    end
+
+    # path is e.g. "a/b/c/d/e/:instructions/:hmac/:file_name.jpg"
+    def parse_path_info(url_path)
+      parts = url_path.split("/")
+
+      basename           = CGI.unescape(parts.pop)
+      hmac               = CGI.unescape(parts.pop)
+      instruction_string = CGI.unescape(parts.pop)
+      dirname            = parts.join("/")
+      relpath            = File.join(dirname, basename)
+
+      yield dirname, instruction_string, hmac, basename, relpath
     end
 
     def synchronize(key, &block)
@@ -66,14 +79,16 @@ class Attache::Download < Attache::Base
       @mutexes.delete(key)
     end
 
-    def get_thumbnail_file(geometry, basename, relpath, vhosts, env)
-      cachekey = File.join(request_hostname(env), relpath, geometry)
+    def get_thumbnail_file(instruction_string, basename, relpath, vhosts, env)
+      instructions = JSON.parse(Base64.urlsafe_decode64(instruction_string))
+      cachekey = File.join(request_hostname(env), relpath, instruction_string)
+
       synchronize(cachekey) do
         tempfile = nil
         Attache.cache.fetch(cachekey) do
           Attache.logger.info "[POOL] new job"
           tempfile = RESIZE_JOB_POOL.with do |job|
-            job.perform(geometry, basename, relpath, vhosts, env) do
+            job.perform(instructions, basename) do
               # opens up possibility that job implementation
               # does not require we download original file prior
               get_original_file(relpath, vhosts, env)

@@ -33,6 +33,7 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'connection_pool', '~> 2.2'
   s.add_runtime_dependency 'sidekiq', '~> 3.4'
   s.add_runtime_dependency 'sucker_punch', '~> 1.5' # single-process Ruby asynchronous processing library
+  s.add_runtime_dependency 'mini_magick'
 
   s.add_development_dependency 'rspec', '~> 3.2'
   s.add_development_dependency 'shoulda', '~> 3.5'
