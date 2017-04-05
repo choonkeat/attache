@@ -1,7 +1,7 @@
 FROM ruby:2.2
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y imagemagick ghostscript
-RUN wget -O $TMPDIR/bundler_geminstaller_install_with_timeout.rb "https://gist.githubusercontent.com/choonkeat/e7196200db3b24f0898e17dc753171d5/raw/7583a734a5e2569d070461c430fd239be10ad720/bundler_geminstaller_install_with_timeout.rb"
+RUN wget -O $TMPDIR/bundler_geminstaller_install_with_timeout.rb "https://raw.githubusercontent.com/choonkeat/attache/master/docker/bundler_geminstaller_install_with_timeout.rb"
 RUN ruby $TMPDIR/bundler_geminstaller_install_with_timeout.rb
 
 RUN useradd -d /app -m app
