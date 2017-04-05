@@ -4,7 +4,7 @@
 target = `which bundle`.chomp
 *old_lines, last_line = IO.read(target).split(/[\r\n]+/)
 if (old_lines.grep(/install_with_timeout/)).empty?
-  new_line = IO.read(__FILE__).split('__END__').last.strip
+  new_line = DATA.read.strip
   combined = (old_lines + [new_line, last_line]).join($/)
   open(target, "w") {|f| f.write(combined) }
   puts "installed."
