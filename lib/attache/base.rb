@@ -10,10 +10,14 @@ class Attache::Base
     Attache.logger.error $!
     Attache.logger.error "ERROR 503 #{env['PATH_INFO']} REFERER #{env['HTTP_REFERER'].inspect}"
     [503, { 'X-Exception' => $!.to_s }, []]
-  rescue Exception
+  rescue Exception => e
     Attache.logger.error $@
     Attache.logger.error $!
     Attache.logger.error "ERROR 500 #{env['PATH_INFO']} REFERER #{env['HTTP_REFERER'].inspect}"
+
+    # Helpful while testing
+    raise e
+
     [500, { 'X-Exception' => $!.to_s }, []]
   end
 
@@ -25,12 +29,14 @@ class Attache::Base
     env['HTTP_X_FORWARDED_HOST'] || env['HTTP_HOST'] || "unknown.host"
   end
 
+  # TODO: use mimemagic directly so we don't need paperclip anymore
   def content_type_of(fullpath)
     Paperclip::ContentTypeDetector.new(fullpath).detect
   rescue Paperclip::Errors::NotIdentifiedByImageMagickError
     # best effort only
   end
 
+  # TODO: can we use MiniMagick here?
   def geometry_of(fullpath)
     Paperclip::Geometry.from_file(fullpath).tap(&:auto_orient).to_s
   rescue Paperclip::Errors::NotIdentifiedByImageMagickError

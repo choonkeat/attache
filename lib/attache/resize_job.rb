@@ -1,19 +1,15 @@
 require 'digest/sha1'
 require 'stringio'
+require 'mini_magick'
 
 class Attache::ResizeJob
-  def perform(target_geometry_string, basename, relpath, vhosts, env, t = Time.now)
+  def perform(instructions, basename, t = Time.now)
     closed_file = yield
     return StringIO.new if closed_file.try(:size).to_i == 0
 
-    extension = basename.split(/\W+/).last
     Attache.logger.info "[POOL] start"
-    return make_nonimage_preview(closed_file, basename) if ['pdf', 'txt'].include?(extension.to_s.downcase)
-
-    thumbnail = thumbnail_for(closed_file: closed_file, target_geometry_string: target_geometry_string, extension: extension)
-    thumbnail.instance_variable_set('@basename', make_safe_filename(thumbnail.instance_variable_get('@basename')))
-    thumbnail.make
-  rescue Paperclip::Errors::NotIdentifiedByImageMagickError
+    transform_image(closed_file, instructions)
+  rescue MiniMagick::Invalid
     make_nonimage_preview(closed_file, basename)
   ensure
     Attache.logger.info "[POOL] done in #{Time.now - t}s"
@@ -51,31 +47,16 @@ class Attache::ResizeJob
       str.to_s.gsub(/[^\w\.]/, '_')
     end
 
-    def thumbnail_for(closed_file:, target_geometry_string:, extension:, max: 2048)
-      convert_options = '-interlace Plane' if %w(jpg jpeg).include?(extension.to_s.downcase)
-      thumbnail = Paperclip::Thumbnail.new(closed_file, geometry: target_geometry_string, format: extension, convert_options: convert_options)
-      current_geometry = current_geometry_for(thumbnail)
-      target_geometry = Paperclip::GeometryParser.new(target_geometry_string).make
-      if target_geometry.larger <= max && current_geometry.larger > max
-        # optimization:
-        #  when users upload "super big files", we can speed things up
-        #  by working from a "reasonably large 2048x2048 thumbnail" (<2 seconds)
-        #  instead of operating on the original (>10 seconds)
-        #  we store this reusably in Attache.cache to persist reboot, but not uploaded to cloud
-        working_geometry = "#{max}x#{max}>"
-        working_file = Attache.cache.fetch(Digest::SHA1.hexdigest(working_geometry + closed_file.path)) do
-          Attache.logger.info "[POOL] generate working_file"
-          Paperclip::Thumbnail.new(closed_file, geometry: working_geometry, format: extension).make
+    def transform_image(closed_file, instructions, max: 2048)
+      image = MiniMagick::Image.open(closed_file.path)
+
+      image.combine_options do |b|
+        instructions.each do |instruction|
+          b.public_send(instruction[0], *instruction[1..-1])
         end
-        Attache.logger.info "[POOL] use working_file #{working_file.path}"
-        thumbnail = Paperclip::Thumbnail.new(working_file.tap(&:close), geometry: target_geometry_string, format: extension, convert_options: convert_options)
       end
-      thumbnail
-    end
 
-    # allow stub in spec
-    def current_geometry_for(thumbnail)
-      thumbnail.current_geometry.tap(&:auto_orient)
+      # Keep tempfile open for the consumer of this class to work with
+      image.tempfile.open
     end
-
 end
