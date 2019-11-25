@@ -21,7 +21,7 @@ Gem::Specification.new do |s|
 
   s.add_runtime_dependency 'rack', '~> 1.6'
   s.add_runtime_dependency 'activesupport'
-  s.add_runtime_dependency 'paperclip', '~> 4.3'
+  s.add_runtime_dependency 'paperclip', '>= 4.3', '< 7.0'
   s.add_runtime_dependency 'puma', '~> 2.14'
   s.add_runtime_dependency 'net-ssh'
   s.add_runtime_dependency 'fog', '~> 1.34'
